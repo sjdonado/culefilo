@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
 export const SearchSchema = z.object({
-  favoriteMealName: z.string(),
-  zipCode: z.number().min(10000).max(99999),
+  favoriteMealName: z.string().min(1, { message: 'Required field' }),
+  zipCode: z.string().regex(/^[0-9]{5,6}$/, 'Invalid zip code format'),
 });

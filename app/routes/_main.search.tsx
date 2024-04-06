@@ -7,6 +7,8 @@ import type { ActionFunctionArgs } from '@remix-run/node';
 
 import { SearchSchema } from '~/schemas/search';
 
+import getLocationDataFromZipCode from '~/services/opendatasoft.server';
+
 import Input from '~/components/Input';
 import SubmitButton from '~/components/SubmitButton';
 
@@ -21,7 +23,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   const { favoriteMealName, zipCode } = fieldValues.data;
 
-  console.log({ favoriteMealName, zipCode });
+  const location = await getLocationDataFromZipCode(zipCode);
+  console.log({ favoriteMealName, zipCode, location });
 
   return null;
 };
