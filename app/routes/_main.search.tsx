@@ -28,7 +28,29 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
   const location = await getLocationDataFromZipCode(zipCode);
 
   console.log({ favoriteMealName, zipCode, location });
-  // TODO: call ai.run here instead of loader
+
+  // https://developers.cloudflare.com/workers-ai/configuration/bindings/
+  // https://developers.cloudflare.com/workers-ai/models/mistral-7b-instruct-v0.1/
+  const ai = new Ai(context.cloudflare.env.AI);
+
+  // TODO: commas as a separator not working yet. gotta improve the prompt
+  const messages = [
+    { role: 'system', content: 'You are a friendly assistant' },
+    {
+      role: 'user',
+      content: `List 6 Other names for ${favoriteMealName} in ${location.country}? Single Words only. Use commas (,) as a separator.`,
+    },
+  ];
+  const res = await ai.run('@cf/mistral/mistral-7b-instruct-v0.1', { messages });
+
+  // TODO: improve typing
+  const response = (res as any)?.response
+    .replace(/\d+/g, '')
+    .replace('.', '')
+    .replace(' ', '')
+    .replace("\n", '');
+
+  console.log('response', response);
 
   const key = crypto.randomUUID();
 
@@ -38,6 +60,7 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
       favoriteMealName,
       zipCode,
       location,
+      response,
     })
   );
 
@@ -47,26 +70,12 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
 export const loader = async ({ request, context }: LoaderFunctionArgs) => {
   const url = new URL(request.url);
 
-  // https://developers.cloudflare.com/workers-ai/configuration/bindings/
-  // https://developers.cloudflare.com/workers-ai/models/mistral-7b-instruct-v0.1/
-  // const ai = new Ai(context.cloudflare.env.AI);
-  //
-  // const messages = [
-  //   { role: 'system', content: 'You are a friendly assistant' },
-  //   {
-  //     role: 'user',
-  //     content: 'What is the origin of the phrase Hello, World',
-  //   },
-  // ];
-  // const response = await ai.run('@cf/mistral/mistral-7b-instruct-v0.1', { messages });
-  //
-  // console.log('response', response);
-
   const key = url.searchParams.get('id');
 
+  // TODO: type correctly
   const search = await context.cloudflare.env.CULEFILO_KV.get(key as string, {
     type: 'json',
-  });
+  }) as any;
 
   return { search };
 };
@@ -99,6 +108,9 @@ export default function SearchPage() {
       </div>
       <div className="mt-6 flex justify-end gap-4">
         <SubmitButton message="Save" />
+      </div>
+      <div>
+        { search?.response }
       </div>
     </ValidatedForm>
   );
