@@ -47,9 +47,10 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
 
   const key = url.searchParams.get('id');
 
-  const search = await context.cloudflare.env.CULEFILO_KV.get(key as string, {
-    type: 'json',
-  });
+  const search = await context.cloudflare.env.CULEFILO_KV
+    .get(key as string, {
+      type: 'json',
+    });
 
   return { search };
 };
