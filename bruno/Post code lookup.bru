@@ -1,0 +1,16 @@
+meta {
+  name: Post code lookup
+  type: http
+  seq: 2
+}
+
+get {
+  url: https://data.opendatasoft.com/api/explore/v2.1/catalog/datasets/geonames-postal-code@public/records?where=postal_code%3D%22{{postCode}}%22%20AND%20accuracy%20IS%20NOT%20NULL&limit=1
+  body: none
+  auth: none
+}
+
+query {
+  where: postal_code%3D%22{{postCode}}%22%20AND%20accuracy%20IS%20NOT%20NULL
+  limit: 1
+}
