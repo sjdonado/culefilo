@@ -1,3 +1,4 @@
+import { Ai } from '@cloudflare/ai';
 import { MagnifyingGlassIcon, MapPinIcon } from '@heroicons/react/24/outline';
 
 import { ValidatedForm, validationError } from 'remix-validated-form';
@@ -27,6 +28,7 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
   const location = await getLocationDataFromZipCode(zipCode);
 
   console.log({ favoriteMealName, zipCode, location });
+  // TODO: call ai.run here instead of loader
 
   const key = crypto.randomUUID();
 
@@ -45,12 +47,26 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
 export const loader = async ({ request, context }: LoaderFunctionArgs) => {
   const url = new URL(request.url);
 
+  // https://developers.cloudflare.com/workers-ai/configuration/bindings/
+  // https://developers.cloudflare.com/workers-ai/models/mistral-7b-instruct-v0.1/
+  // const ai = new Ai(context.cloudflare.env.AI);
+  //
+  // const messages = [
+  //   { role: 'system', content: 'You are a friendly assistant' },
+  //   {
+  //     role: 'user',
+  //     content: 'What is the origin of the phrase Hello, World',
+  //   },
+  // ];
+  // const response = await ai.run('@cf/mistral/mistral-7b-instruct-v0.1', { messages });
+  //
+  // console.log('response', response);
+
   const key = url.searchParams.get('id');
 
-  const search = await context.cloudflare.env.CULEFILO_KV
-    .get(key as string, {
-      type: 'json',
-    });
+  const search = await context.cloudflare.env.CULEFILO_KV.get(key as string, {
+    type: 'json',
+  });
 
   return { search };
 };
