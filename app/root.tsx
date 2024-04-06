@@ -1,6 +1,6 @@
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from '@remix-run/react';
 
-import 'index.css';
+import '~/index.css';
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
