@@ -1,7 +1,7 @@
 meta {
-  name: Places API - text search
+  name: Places API - text search (circle viewport)
   type: http
-  seq: 3
+  seq: 4
 }
 
 post {
@@ -20,16 +20,14 @@ body:json {
   {
     "textQuery": "Patacones",
     "includedType": "restaurant",
-    "locationRestriction": {
-      "rectangle": {
-        "low": {
-          "latitude": 52.39663391970407,
-          "longitude": 12.922315639977199
+    "rankPreference": "DISTANCE",
+    "locationBias": {
+      "circle": {
+        "center": {
+          "latitude": 52.5116,
+          "longitude": 13.1962
         },
-        "high": {
-          "latitude": 52.62656608029594,
-          "longitude": 13.4700843600228
-        }
+        "radius": 500
       }
     },
     "maxResultCount": 1

@@ -1,4 +1,5 @@
 import { AppLoadContext } from '@remix-run/cloudflare';
+import { createRectangleFromCenter } from '~/utils/geo.server';
 
 type PlaceAPIResponse = {
   places: {
@@ -43,24 +44,36 @@ export async function getPlacesByTextAndCoordinates(
   text: string,
   coordinates: { latitude: number; longitude: number }
 ) {
+  console.log(
+    `[${getPlacesByTextAndCoordinates.name}] ${text} (${JSON.stringify(coordinates)})`
+  );
+
+  const viewport = createRectangleFromCenter(coordinates, 100);
+
   const payload = {
     textQuery: text,
     includedType: 'restaurant',
     maxResultCount: 6,
-    locationBias: {
-      circle: {
-        center: {
-          latitude: coordinates.latitude,
-          longitude: coordinates.longitude,
+    // locationRestriction does not support a circle viewport
+    locationRestriction: {
+      rectangle: {
+        low: {
+          latitude: viewport.sw.latitude,
+          longitude: viewport.sw.longitude,
         },
-        radius: 500, // meters
+        high: {
+          latitude: viewport.ne.latitude,
+          longitude: viewport.ne.longitude,
+        },
       },
     },
   };
 
-  console.log(`[Places API] ${JSON.stringify(payload, null, 2)}`);
+  console.log(
+    `[${getPlacesByTextAndCoordinates.name}] ${JSON.stringify(payload, null, 2)}`
+  );
 
-  const host = context.cloudflare.request?.headers.get('host') || 'localhost';
+  const host = context.cloudflare.request?.headers.get('host')!;
 
   const response = await fetch(context.cloudflare.env.PLACES_API_URL, {
     method: 'POST',
