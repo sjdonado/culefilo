@@ -1,4 +1,7 @@
 import { z } from 'zod';
+
+import { ALL_SEARCH_STATES } from '~/config/search';
+
 import { PlaceSchema } from './place';
 
 export const SearchSchema = z.object({
@@ -11,7 +14,9 @@ export const SearchSchema = z.object({
 
 export const SearchResultSchema = z.object({
   input: SearchSchema,
-  places: z.array(PlaceSchema),
+  state: z.enum(ALL_SEARCH_STATES),
+  suggestions: z.array(z.string()).optional(),
+  places: z.array(PlaceSchema).optional(),
 });
 
 export type Search = z.infer<typeof SearchSchema>;

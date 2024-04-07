@@ -53,7 +53,7 @@ export async function getPlacesByTextAndCoordinates(
           latitude: coordinates.latitude,
           longitude: coordinates.longitude,
         },
-        radius: 500,
+        radius: 500, // meters
       },
     },
   };

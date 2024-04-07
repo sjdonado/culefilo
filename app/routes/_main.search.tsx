@@ -6,11 +6,12 @@ import { withZod } from '@remix-validated-form/with-zod';
 import type { LoaderFunctionArgs, ActionFunctionArgs } from '@remix-run/cloudflare';
 import { redirect, useLoaderData } from '@remix-run/react';
 
-import { SearchResult, SearchResultSchema, SearchSchema } from '~/schemas/search';
+import { SearchResult, SearchSchema } from '~/schemas/search';
+
+import { searchJob } from '~/jobs/search.server';
 
 import getLocationDataFromZipCode from '~/services/opendatasoft.server';
-import { getKVRecord, putKVRecord, runLLMRequest } from '~/services/cloudfare.server';
-import { getPlacesByTextAndCoordinates } from '~/services/places.server';
+import { getKVRecord } from '~/services/cloudfare.server';
 
 import Input from '~/components/Input';
 import SubmitButton from '~/components/SubmitButton';
@@ -38,42 +39,7 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
     );
   }
 
-  const mdListResponse = await runLLMRequest(
-    context,
-    `other names for "${favoriteMealName}" (return answer in a CSV format, comma delimiter, max 6 items)`,
-    context.cloudflare.env.AI_DEFAULT_INSTRUCTION
-  );
-
-  // Parse the markdown list to an array
-  const restaurants = mdListResponse
-    .split(',')
-    .filter(item => item.trim().replace(/\n/g, '') !== '');
-
-  if (restaurants.length === 0) {
-    throw new Error(`[${runLLMRequest.name}] No results found for ${favoriteMealName}`);
-  }
-
-  const places = await getPlacesByTextAndCoordinates(
-    context,
-    favoriteMealName,
-    location.coordinates
-  );
-
-  console.log('results', { location, restaurants, places });
-
-  const key = crypto.randomUUID();
-
-  await putKVRecord(
-    context,
-    key,
-    SearchResultSchema.parse({
-      input: {
-        favoriteMealName,
-        zipCode,
-      },
-      places,
-    })
-  );
+  const key = await searchJob(context, favoriteMealName, location);
 
   return redirect(`/search?id=${key}`);
 };

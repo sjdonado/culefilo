@@ -22,6 +22,17 @@ type PostalCodeRecord = {
   }>;
 };
 
+export type GeoData = {
+  zipCode: string;
+  country: string;
+  city: string;
+  state: string;
+  coordinates: {
+    latitude: number;
+    longitude: number;
+  };
+};
+
 export default async function getLocationDataFromZipCode(
   context: AppLoadContext,
   countryCode: string,
@@ -52,6 +63,7 @@ export default async function getLocationDataFromZipCode(
   }
 
   return {
+    zipCode: data.results[0].postal_code,
     country: data.results[0].country_code,
     city: data.results[0].place_name,
     state: data.results[0].admin_name1,
@@ -59,5 +71,5 @@ export default async function getLocationDataFromZipCode(
       latitude: data.results[0].latitude,
       longitude: data.results[0].longitude,
     },
-  };
+  } as GeoData;
 }
