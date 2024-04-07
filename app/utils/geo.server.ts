@@ -11,14 +11,14 @@ export const createRectangleFromCenter = (
   radius: number
 ) => {
   const earthRadius = 6371000; // Earth's radius in meters
-  const area = radius * 1000000; // Convert square kilometers to square meters
+  const distance = radius * 1000; // Convert kilometers to meters
 
   // Convert latitude and longitude to radians
   const centerLat = degreesToRadians(center.latitude);
   const centerLng = degreesToRadians(center.longitude);
 
   // Calculate the angular distance in radians
-  const angularDistance = area / earthRadius;
+  const angularDistance = distance / earthRadius;
 
   // Calculate the SW and NE corners of the rectangle
   const swLat = centerLat - angularDistance;
