@@ -113,6 +113,8 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
         await new Promise(resolve => setTimeout(resolve, 3000));
 
         console.log(`[${startOrCheckSearchJob.name}] (${key}) finished`);
+
+        sendEvent('done');
       } catch (error) {
         console.error(`[${startOrCheckSearchJob.name}] Job ${key} failed`, error);
 

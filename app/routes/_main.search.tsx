@@ -70,12 +70,14 @@ export default function SearchPage() {
       eventSource.onmessage = event => {
         const decodedValue = event.data;
         console.log(decodedValue);
+
+        if (decodedValue === 'done') {
+          eventSource.close();
+          revalidator.revalidate();
+        }
+
         setJobMessage(prev => [...prev, decodedValue]);
       };
-
-      eventSource.addEventListener('close', () => {
-        revalidator.revalidate();
-      });
 
       return () => {
         eventSource.close();
