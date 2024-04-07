@@ -78,7 +78,9 @@ export default function SearchPage() {
       while (true) {
         const chunk = await reader?.read();
 
-        if (chunk?.done) break;
+        if (chunk?.done) {
+          break;
+        }
 
         const decodedValue = decoder.decode(chunk?.value);
 
@@ -125,11 +127,11 @@ export default function SearchPage() {
           </div>
         </div>
         <div className="flex justify-end gap-4">
-          <SubmitButton message="Submit" />
+          <SubmitButton message="Submit" disabled={!!searchJob} />
         </div>
       </ValidatedForm>
       {isJobInProgress && (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2">
           {jobMessages.map((message, index) => (
             <p className="text-center text-sm" key={index}>
               {message}
