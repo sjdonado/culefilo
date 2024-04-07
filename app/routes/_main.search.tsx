@@ -1,4 +1,3 @@
-import { Ai } from '@cloudflare/ai';
 import { MagnifyingGlassIcon, MapPinIcon } from '@heroicons/react/24/outline';
 
 import { ValidatedForm, validationError } from 'remix-validated-form';
@@ -10,10 +9,10 @@ import { redirect, useLoaderData } from '@remix-run/react';
 import { SearchResult, SearchSchema } from '~/schemas/search';
 
 import getLocationDataFromZipCode from '~/services/opendatasoft.server';
+import { getKVRecord, putKVRecord, runLLMRequest } from '~/services/cloudfare.server';
 
 import Input from '~/components/Input';
 import SubmitButton from '~/components/SubmitButton';
-import { getKVRecord, putKVRecord, runLLMRequest } from '~/services/cloudfare.server';
 
 const validator = withZod(SearchSchema);
 
@@ -63,8 +62,6 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
 export default function SearchPage() {
   const { search } = useLoaderData<typeof loader>();
 
-  console.log('client', search);
-
   return (
     <ValidatedForm validator={validator} method="post">
       <div className="border-base-custom rounded-lg border bg-base-200/30 p-4 md:p-6">
@@ -89,7 +86,7 @@ export default function SearchPage() {
       <div className="mt-6 flex justify-end gap-4">
         <SubmitButton message="Save" />
       </div>
-      <div>{search?.response}</div>
+      <div>{JSON.stringify(search, null, 2)}</div>
     </ValidatedForm>
   );
 }

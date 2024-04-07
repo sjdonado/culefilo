@@ -2,7 +2,7 @@ import { Ai } from '@cloudflare/ai';
 import type { AiTextGenerationOutput } from '@cloudflare/ai/dist/ai/tasks/text-generation';
 
 import { AppLoadContext } from '@remix-run/cloudflare';
-import { AI_DEFAULT_INSTRUCTION, AI_DEFAULT_MODEL } from '~/config/env.server';
+import { AI_DEFAULT_INSTRUCTION } from '~/config/env.server';
 
 type AiTextGenerationOutputWithResponse = Extract<
   AiTextGenerationOutput,
@@ -20,8 +20,7 @@ export function getKVRecord<T>(context: AppLoadContext, key: string) {
 export async function runLLMRequest(
   context: AppLoadContext,
   prompt: string,
-  instruction = AI_DEFAULT_INSTRUCTION,
-  model = AI_DEFAULT_MODEL
+  instruction = AI_DEFAULT_INSTRUCTION
 ) {
   // https://developers.cloudflare.com/workers-ai/configuration/bindings/
   // https://developers.cloudflare.com/workers-ai/models/mistral-7b-instruct-v0.1/
@@ -38,7 +37,7 @@ export async function runLLMRequest(
     },
   ];
 
-  const data = (await ai.run(model, {
+  const data = (await ai.run('@cf/mistral/mistral-7b-instruct-v0.1', {
     messages,
   })) as AiTextGenerationOutputWithResponse;
 

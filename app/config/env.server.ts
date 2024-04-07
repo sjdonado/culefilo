@@ -1,0 +1,2 @@
+export const OPENDATASOFT_API_URL = process.env.OPENDATASOFT_API_URL!;
+export const AI_DEFAULT_INSTRUCTION = process.env.AI_DEFAULT_INSTRUCTION!;

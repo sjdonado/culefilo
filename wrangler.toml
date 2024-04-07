@@ -26,7 +26,7 @@ compatibility_date = "2024-04-05"
 # Docs: https://developers.cloudflare.com/pages/functions/bindings/#kv-namespaces
 [[kv_namespaces]]
 binding = "CULEFILO_KV"
-id = "6e224e01a91cb20cb98b6937d754a1b8"
+id = "b76a7dbd7be8541c0c6c1db621c82395"
 
 # Bind the Workers AI model catalog. Run machine learning models, powered by serverless GPUs, on Cloudflare’s global network
 # Docs: https://developers.cloudflare.com/pages/functions/bindings/#workers-ai

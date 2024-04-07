@@ -1,5 +1,4 @@
-const baseUrl =
-  'https://data.opendatasoft.com/api/explore/v2.1/catalog/datasets/geonames-postal-code@public/records';
+import { OPENDATASOFT_API_URL } from '~/config/env.server';
 
 type PostalCodeRecord = {
   total_count: number;
@@ -24,7 +23,7 @@ type PostalCodeRecord = {
 };
 
 export default async function getLocationDataFromZipCode(zipCode: string) {
-  const url = new URL(baseUrl);
+  const url = new URL(OPENDATASOFT_API_URL);
 
   url.searchParams.append('where', `postal_code="${zipCode}" AND accuracy IS NOT NULL`);
   url.searchParams.append('limit', '1');
