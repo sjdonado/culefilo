@@ -7,12 +7,13 @@ import { withZod } from '@remix-validated-form/with-zod';
 import type { LoaderFunctionArgs, ActionFunctionArgs } from '@remix-run/cloudflare';
 import { redirect, useLoaderData } from '@remix-run/react';
 
-import { SearchSchema } from '~/schemas/search';
+import { SearchResult, SearchSchema } from '~/schemas/search';
 
 import getLocationDataFromZipCode from '~/services/opendatasoft.server';
 
 import Input from '~/components/Input';
 import SubmitButton from '~/components/SubmitButton';
+import { getKVRecord, putKVRecord, runLLMRequest } from '~/services/cloudfare.server';
 
 const validator = withZod(SearchSchema);
 
@@ -27,42 +28,29 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
 
   const location = await getLocationDataFromZipCode(zipCode);
 
-  console.log({ favoriteMealName, zipCode, location });
-
-  // https://developers.cloudflare.com/workers-ai/configuration/bindings/
-  // https://developers.cloudflare.com/workers-ai/models/mistral-7b-instruct-v0.1/
-  const ai = new Ai(context.cloudflare.env.AI);
-
-  // TODO: commas as a separator not working yet. gotta improve the prompt
-  const messages = [
-    { role: 'system', content: 'You are a friendly assistant' },
-    {
-      role: 'user',
-      content: `List 6 Other names for ${favoriteMealName} in ${location.country}? Single Words only. Use commas (,) as a separator.`,
-    },
-  ];
-  const res = await ai.run('@cf/mistral/mistral-7b-instruct-v0.1', { messages });
-
-  // TODO: improve typing
-  const response = (res as any)?.response
-    .replace(/\d+/g, '')
-    .replace('.', '')
-    .replace(' ', '')
-    .replace("\n", '');
+  const response = await runLLMRequest(
+    context,
+    `List 6 other names for this meal "${favoriteMealName}" in this place "${location.country}"?`
+  );
 
   console.log('response', response);
 
+  const restaurants = response
+    .replace(/\d+/g, '')
+    .replace('.', '')
+    .replace(' ', '')
+    .replace('\n', '');
+
   const key = crypto.randomUUID();
 
-  await context.cloudflare.env.CULEFILO_KV.put(
-    key,
-    JSON.stringify({
+  await putKVRecord(context, key, {
+    input: {
       favoriteMealName,
       zipCode,
-      location,
-      response,
-    })
-  );
+    },
+    location,
+    restaurants,
+  });
 
   return redirect(`/search?id=${key}`);
 };
@@ -72,10 +60,7 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
 
   const key = url.searchParams.get('id');
 
-  // TODO: type correctly
-  const search = await context.cloudflare.env.CULEFILO_KV.get(key as string, {
-    type: 'json',
-  }) as any;
+  const search = await getKVRecord<SearchResult>(context, key ?? '');
 
   return { search };
 };
@@ -109,9 +94,7 @@ export default function SearchPage() {
       <div className="mt-6 flex justify-end gap-4">
         <SubmitButton message="Save" />
       </div>
-      <div>
-        { search?.response }
-      </div>
+      <div>{search?.response}</div>
     </ValidatedForm>
   );
 }
