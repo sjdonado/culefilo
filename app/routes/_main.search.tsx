@@ -28,18 +28,13 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
 
   const location = await getLocationDataFromZipCode(zipCode);
 
-  const response = await runLLMRequest(
+  const mdListResponse = await runLLMRequest(
     context,
     `List 6 other names for this meal "${favoriteMealName}" in this place "${location.country}"?`
   );
 
-  console.log('response', response);
-
-  const restaurants = response
-    .replace(/\d+/g, '')
-    .replace('.', '')
-    .replace(' ', '')
-    .replace('\n', '');
+  // Parse the markdown list to an array
+  const restaurants = mdListResponse.split(/\d+\.\s/).filter(item => item.trim() !== '');
 
   const key = crypto.randomUUID();
 
