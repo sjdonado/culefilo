@@ -22,4 +22,16 @@ export const PlaceSchema = z
     isOpenNow: currentOpeningHours?.openNow ?? null,
   }));
 
+export const PlaceGeoDataSchema = z.object({
+  zipCode: z.string(),
+  country: z.string(),
+  city: z.string(),
+  state: z.string(),
+  coordinates: z.object({
+    latitude: z.number(),
+    longitude: z.number(),
+  }),
+});
+
 export type Place = z.infer<typeof PlaceSchema>;
+export type PlaceGeoData = z.infer<typeof PlaceGeoDataSchema>;
