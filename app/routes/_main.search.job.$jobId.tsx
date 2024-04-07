@@ -1,9 +1,9 @@
 import invariant from 'tiny-invariant';
 
-import type { ActionFunctionArgs } from '@remix-run/cloudflare';
+import type { LoaderFunctionArgs } from '@remix-run/cloudflare';
 import { startOrCheckSearchJob } from '~/jobs/search.server';
 
-export const action = async ({ params, context }: ActionFunctionArgs) => {
+export const loader = async ({ params, context }: LoaderFunctionArgs) => {
   invariant(params.jobId, 'Missing jobId param');
 
   const stream = await startOrCheckSearchJob(context, params.jobId);
@@ -11,8 +11,9 @@ export const action = async ({ params, context }: ActionFunctionArgs) => {
   return new Response(stream, {
     status: 200,
     headers: {
-      'Content-Type': 'text/plain',
-      'Transfer-Encoding': 'chunked',
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
     },
   });
 };

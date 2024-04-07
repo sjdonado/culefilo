@@ -31,22 +31,22 @@ export async function createSearchJob(
 export async function startOrCheckSearchJob(context: AppLoadContext, key: string) {
   const job = await getKVRecord<SearchJob>(context, key);
 
-  try {
-    const encoder = new TextEncoder();
+  // if job has been executed
+  if (job.state !== SearchJobState.Created) {
+    console.log(
+      `[${startOrCheckSearchJob.name}] (${key}) is already running or finished`
+    );
+    return 'Job started somewhere else, reload the page';
+  }
 
-    const stream = new ReadableStream({
-      async start(controller) {
-        // if job has been executed
-        if (job.state !== SearchJobState.Created) {
-          console.log(
-            `[${startOrCheckSearchJob.name}] (${key}) is already running or finished`
-          );
-          controller.enqueue(
-            encoder.encode('Job started somewhere else, reload the page\n')
-          );
+  const encoder = new TextEncoder();
 
-          return;
-        }
+  const stream = new ReadableStream({
+    async start(controller) {
+      try {
+        const sendEvent = (data: string) => {
+          controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+        };
 
         console.log(`[${startOrCheckSearchJob.name}] (${key}) started`);
 
@@ -60,7 +60,7 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
         );
 
         console.log(`[${startOrCheckSearchJob.name}] (${key}) LLM suggestions started`);
-        controller.enqueue(encoder.encode('Looking for your favorite meal...\n'));
+        sendEvent('Looking for your favorite meal...');
 
         // TODO: remove this placeholder line - simulates the response time of the LLM request
         await new Promise(resolve => setTimeout(resolve, 5000));
@@ -91,7 +91,7 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
         );
 
         console.log(`[${startOrCheckSearchJob.name}] (${key}) places search started`);
-        controller.enqueue(encoder.encode('Looking for places...\n'));
+        sendEvent('Looking for places...');
 
         const places = await getPlacesByTextAndCoordinates(
           context,
@@ -113,18 +113,22 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
         await new Promise(resolve => setTimeout(resolve, 3000));
 
         console.log(`[${startOrCheckSearchJob.name}] (${key}) finished`);
-      },
-    });
 
-    return stream;
-  } catch (error) {
-    console.error(`[${startOrCheckSearchJob.name}] Job ${key} failed`, error);
+        sendEvent('done');
+      } catch (error) {
+        console.error(`[${startOrCheckSearchJob.name}] Job ${key} failed`, error);
 
-    await putKVRecord(context, key, {
-      ...job,
-      state: SearchJobState.Failure,
-    });
+        await putKVRecord(context, key, {
+          ...job,
+          state: SearchJobState.Failure,
+        });
 
-    throw error;
-  }
+        throw error;
+      }
+
+      controller.close();
+    },
+  });
+
+  return stream;
 }

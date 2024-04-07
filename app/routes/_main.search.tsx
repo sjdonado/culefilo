@@ -65,30 +65,23 @@ export default function SearchPage() {
 
   const startSearchJob = useCallback(async () => {
     if (searchJob?.state === SearchJobState.Created) {
-      const response = await fetch(`/search/job/${jobId}`, {
-        method: 'post',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      const eventSource = new EventSource(`/search/job/${jobId}`);
 
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
+      eventSource.onmessage = event => {
+        const decodedValue = event.data;
+        console.log(decodedValue);
 
-      while (true) {
-        const chunk = await reader?.read();
-
-        if (chunk?.done) {
-          break;
+        if (decodedValue === 'done') {
+          eventSource.close();
+          revalidator.revalidate();
         }
 
-        const decodedValue = decoder.decode(chunk?.value);
-
-        console.log(decodedValue);
         setJobMessage(prev => [...prev, decodedValue]);
-      }
+      };
 
-      revalidator.revalidate();
+      return () => {
+        eventSource.close();
+      };
     }
   }, [jobId, searchJob]);
 
