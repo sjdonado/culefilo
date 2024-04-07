@@ -1,4 +1,5 @@
 export enum SearchJobState {
+  Created = 'created',
   Running = 'running',
   Success = 'success',
   Failure = 'failure',

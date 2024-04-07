@@ -19,7 +19,7 @@ export async function createSearchJob(
       favoriteMealName,
       zipCode: geoData.zipCode,
     },
-    state: SearchJobState.Running,
+    state: SearchJobState.Created,
     geoData,
   });
 
@@ -31,34 +31,49 @@ export async function createSearchJob(
 export async function startOrCheckSearchJob(context: AppLoadContext, key: string) {
   const job = await getKVRecord<SearchJob>(context, key);
 
-  if (job.state === SearchJobState.Running) {
+  // if job has been executed
+  if (job.state !== SearchJobState.Created) {
+    console.log(
+      `[${startOrCheckSearchJob.name}] Job ${key} is already running or finished`
+    );
     return job;
   }
 
   try {
-    const mdListResponse = await runLLMRequest(
+    await putKVRecord(
       context,
-      `other names for "${job.input.favoriteMealName}" (return answer in a CSV format, comma delimiter, max 6 items)`,
-      context.cloudflare.env.AI_DEFAULT_INSTRUCTION
+      key,
+      SearchJobSchema.parse({
+        ...job,
+        state: SearchJobState.Running,
+      })
     );
 
-    const suggestions = mdListResponse
-      .split(',')
-      .filter(item => item.trim().replace(/\n/g, '') !== '');
+    console.log(`[${startOrCheckSearchJob.name}] Job ${key} started`);
 
-    // Parse the markdown list to an array
-    if (suggestions.length === 0) {
-      throw new Error(
-        `[${runLLMRequest.name}] No results found for ${job.input.favoriteMealName}`
-      );
-    }
+    // const mdListResponse = await runLLMRequest(
+    //   context,
+    //   `other names for "${job.input.favoriteMealName}" (return answer in a CSV format, comma delimiter, max 6 items)`,
+    //   context.cloudflare.env.AI_DEFAULT_INSTRUCTION
+    // );
+    //
+    // const suggestions = mdListResponse
+    //   .split(',')
+    //   .filter(item => item.trim().replace(/\n/g, '') !== '');
+    //
+    // // Parse the markdown list to an array
+    // if (suggestions.length === 0) {
+    //   throw new Error(
+    //     `[${startOrCheckSearchJob.name}] No results found for ${job.input.favoriteMealName}`
+    //   );
+    // }
 
     await putKVRecord(
       context,
       key,
       SearchJobSchema.parse({
         ...job,
-        suggestions,
+        suggestions: [],
       })
     );
 
@@ -78,12 +93,13 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
       })
     );
   } catch (error) {
-    console.error(error);
+    console.error(`[${startOrCheckSearchJob.name}] Job ${key} failed`, error);
+
     await putKVRecord(context, key, {
       ...job,
       state: SearchJobState.Failure,
     });
-  }
 
-  return key;
+    throw error;
+  }
 }
