@@ -73,11 +73,6 @@ export default function SearchPage() {
         setJobMessage(prev => [...prev, decodedValue]);
       };
 
-      eventSource.onerror = event => {
-        console.error('EventSource error:', event.data);
-        revalidator.revalidate();
-      };
-
       eventSource.addEventListener('close', () => {
         revalidator.revalidate();
       });
