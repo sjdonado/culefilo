@@ -38,6 +38,7 @@ export default async function getLocationDataFromZipCode(
   countryCode: string,
   zipCode: string
 ) {
+  throw Error('bugsnag test - opendatasoft');
   const url = new URL(context.cloudflare.env.OPENDATASOFT_API_URL);
 
   url.searchParams.append(
