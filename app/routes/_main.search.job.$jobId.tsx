@@ -6,5 +6,13 @@ import { startOrCheckSearchJob } from '~/jobs/search.server';
 export const action = async ({ params, context }: ActionFunctionArgs) => {
   invariant(params.jobId, 'Missing jobId param');
 
-  await startOrCheckSearchJob(context, params.jobId);
+  const stream = await startOrCheckSearchJob(context, params.jobId);
+
+  return new Response(stream, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/plain',
+      'Transfer-Encoding': 'chunked',
+    },
+  });
 };

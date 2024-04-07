@@ -1,11 +1,11 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { MagnifyingGlassIcon, MapPinIcon } from '@heroicons/react/24/outline';
 
 import { ValidatedForm, validationError } from 'remix-validated-form';
 import { withZod } from '@remix-validated-form/with-zod';
 
 import type { LoaderFunctionArgs, ActionFunctionArgs } from '@remix-run/cloudflare';
-import { redirect, useLoaderData } from '@remix-run/react';
+import { redirect, useLoaderData, useRevalidator } from '@remix-run/react';
 
 import { SearchJobState } from '~/constants/job';
 
@@ -58,17 +58,35 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
 };
 
 export default function SearchPage() {
+  const revalidator = useRevalidator();
   const { jobId, searchJob } = useLoaderData<typeof loader>();
+
+  const [jobMessages, setJobMessage] = useState<string[]>([]);
 
   const startSearchJob = useCallback(async () => {
     if (searchJob?.state === SearchJobState.Created) {
-      // TODO: return stream and update state with progress
-      await fetch(`/search/job/${jobId}`, {
+      const response = await fetch(`/search/job/${jobId}`, {
         method: 'post',
         headers: {
           'Content-Type': 'application/json',
         },
       });
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const chunk = await reader?.read();
+
+        if (chunk?.done) break;
+
+        const decodedValue = decoder.decode(chunk?.value);
+
+        console.log(decodedValue);
+        setJobMessage(prev => [...prev, decodedValue]);
+      }
+
+      revalidator.revalidate();
     }
   }, [jobId, searchJob]);
 
@@ -77,6 +95,10 @@ export default function SearchPage() {
   }, [startSearchJob]);
 
   console.log('search', searchJob);
+
+  const isJobInProgress = [SearchJobState.Created, SearchJobState.Running].includes(
+    searchJob?.state as SearchJobState
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -106,10 +128,15 @@ export default function SearchPage() {
           <SubmitButton message="Submit" />
         </div>
       </ValidatedForm>
-      {searchJob?.state === SearchJobState.Created ||
-        (searchJob?.state === SearchJobState.Running && (
-          <p className="text-center text-sm">Looking for your favorite meal...</p>
-        ))}
+      {isJobInProgress && (
+        <div className="flex flex-col gap-4">
+          {jobMessages.map((message, index) => (
+            <p className="text-center text-sm" key={index}>
+              {message}
+            </p>
+          ))}
+        </div>
+      )}
       {searchJob?.state === SearchJobState.Failure && (
         <p className="text-center text-sm">Something went wrong, please try again</p>
       )}
