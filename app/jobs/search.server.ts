@@ -2,9 +2,14 @@ import { AppLoadContext } from '@remix-run/cloudflare';
 import { SearchJobState } from '~/constants/job';
 
 import { SearchJob, SearchJobSchema } from '~/schemas/job';
-import { PlaceGeoData } from '~/schemas/place';
+import { PlaceGeoData, PlaceSchema } from '~/schemas/place';
 
-import { getKVRecord, putKVRecord, runLLMRequest } from '~/services/cloudfare.server';
+import {
+  getKVRecord,
+  putKVRecord,
+  runLLMRequest,
+  runSummarizationRequest,
+} from '~/services/cloudfare.server';
 import { getPlacesByTextAndCoordinates } from '~/services/places.server';
 
 export async function createSearchJob(
@@ -99,13 +104,34 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
           job.geoData.coordinates
         );
 
+        sendEvent('Almost done! processing results...');
+
+        const placesWithDescriptions = Promise.all(
+          places.slice(0, 3).map(async place => {
+            const name = place.displayName.text;
+            const address = place.formattedAddress;
+            const url = place.googleMapsUri;
+            const reviews = place.reviews.map(review => review.text.text);
+
+            const description = await runSummarizationRequest(context, name, reviews);
+
+            return {
+              name,
+              description,
+              address,
+              url,
+              isOpen: place.currentOpeningHours?.openNow ?? null,
+            };
+          })
+        );
+
         await putKVRecord(
           context,
           key,
           SearchJobSchema.parse({
             ...job,
             state: SearchJobState.Success,
-            places,
+            places: placesWithDescriptions,
           })
         );
 

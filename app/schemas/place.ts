@@ -1,26 +1,12 @@
 import { z } from 'zod';
 
-export const PlaceSchema = z
-  .object({
-    formattedAddress: z.string(),
-    googleMapsUri: z.string(),
-    displayName: z.object({
-      text: z.string(),
-      languageCode: z.string(),
-    }),
-    currentOpeningHours: z
-      .object({
-        openNow: z.boolean(),
-        weekdayDescriptions: z.array(z.string()),
-      })
-      .optional(),
-  })
-  .transform(({ formattedAddress, googleMapsUri, displayName, currentOpeningHours }) => ({
-    address: formattedAddress,
-    name: displayName.text,
-    url: googleMapsUri,
-    isOpenNow: currentOpeningHours?.openNow ?? null,
-  }));
+export const PlaceSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  address: z.string(),
+  url: z.string(),
+  isOpen: z.boolean().nullable(),
+});
 
 export const PlaceGeoDataSchema = z.object({
   zipCode: z.string(),

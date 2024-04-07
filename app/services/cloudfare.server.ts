@@ -42,3 +42,25 @@ export async function runLLMRequest(
 
   return data.response!;
 }
+
+export async function runSummarizationRequest(
+  context: AppLoadContext,
+  name: string,
+  reviews: string[]
+) {
+  // https://developers.cloudflare.com/workers-ai/configuration/bindings/
+  const ai = new Ai(context.cloudflare.env.AI);
+
+  const input = `The restaurant named "${name}" can be described by its reviews : "${reviews.join(
+    '\n'
+  )}".`;
+
+  const data = (await ai.run('@cf/facebook/bart-large-cnn', {
+    input_text: input,
+    max_length: 300,
+  })) as AiTextGenerationOutputWithResponse;
+
+  console.log('runSummarizationRequest', data);
+
+  return data.response!;
+}

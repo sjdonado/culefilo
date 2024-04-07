@@ -26,6 +26,9 @@ type PlaceAPIResponse = {
       openNow: boolean;
       weekdayDescriptions: string[];
     };
+    reviews: {
+      text: { text: string; languageCode: string };
+    }[];
     photos: {
       name: string;
       widthPx: number;
