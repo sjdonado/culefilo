@@ -2,7 +2,6 @@ import { Ai } from '@cloudflare/ai';
 import type { AiTextGenerationOutput } from '@cloudflare/ai/dist/ai/tasks/text-generation';
 
 import { AppLoadContext } from '@remix-run/cloudflare';
-import { AI_DEFAULT_INSTRUCTION } from '~/config/env.server';
 
 type AiTextGenerationOutputWithResponse = Extract<
   AiTextGenerationOutput,
@@ -20,7 +19,7 @@ export function getKVRecord<T>(context: AppLoadContext, key: string) {
 export async function runLLMRequest(
   context: AppLoadContext,
   prompt: string,
-  instruction = AI_DEFAULT_INSTRUCTION
+  instruction: string
 ) {
   // https://developers.cloudflare.com/workers-ai/configuration/bindings/
   // https://developers.cloudflare.com/workers-ai/models/mistral-7b-instruct-v0.1/

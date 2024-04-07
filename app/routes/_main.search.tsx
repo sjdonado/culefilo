@@ -25,11 +25,15 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
 
   const { favoriteMealName, zipCode } = fieldValues.data;
 
-  const location = await getLocationDataFromZipCode(zipCode);
+  const location = await getLocationDataFromZipCode(
+    context.cloudflare.env.OPENDATASOFT_API_URL,
+    zipCode
+  );
 
   const mdListResponse = await runLLMRequest(
     context,
-    `List 6 other names for this meal "${favoriteMealName}" in this place "${location.country}"?`
+    `List 6 other names for this meal "${favoriteMealName}" in this place "${location.country}"?`,
+    context.cloudflare.env.AI_DEFAULT_INSTRUCTION
   );
 
   // Parse the markdown list to an array

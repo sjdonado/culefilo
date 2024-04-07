@@ -4,8 +4,9 @@ compatibility_date = "2024-04-05"
 # Variable bindings. These are arbitrary, plaintext strings (similar to environment variables)
 # Note: Use secrets to store sensitive data.
 # Docs: https://developers.cloudflare.com/pages/functions/bindings/#environment-variables
-# [vars]
-# MY_VARIABLE = "production_value"
+[vars]
+OPENDATASOFT_API_URL = "https://data.opendatasoft.com/api/explore/v2.1/catalog/datasets/geonames-postal-code@public/records"
+AI_DEFAULT_INSTRUCTION = "You are an international chef, your responses are short, concise and always returned in a list in markdown format."
 
 # Bind a D1 database. D1 is Cloudflare’s native serverless SQL database.
 # Docs: https://developers.cloudflare.com/pages/functions/bindings/#d1-databases

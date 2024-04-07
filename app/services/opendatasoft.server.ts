@@ -1,5 +1,3 @@
-import { OPENDATASOFT_API_URL } from '~/config/env.server';
-
 type PostalCodeRecord = {
   total_count: number;
   results: Array<{
@@ -22,8 +20,11 @@ type PostalCodeRecord = {
   }>;
 };
 
-export default async function getLocationDataFromZipCode(zipCode: string) {
-  const url = new URL(OPENDATASOFT_API_URL);
+export default async function getLocationDataFromZipCode(
+  apiUrl: string,
+  zipCode: string
+) {
+  const url = new URL(apiUrl);
 
   url.searchParams.append('where', `postal_code="${zipCode}" AND accuracy IS NOT NULL`);
   url.searchParams.append('limit', '1');
