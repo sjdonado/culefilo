@@ -1,3 +1,5 @@
+import { AppLoadContext } from '@remix-run/cloudflare';
+
 type PostalCodeRecord = {
   total_count: number;
   results: Array<{
@@ -21,10 +23,10 @@ type PostalCodeRecord = {
 };
 
 export default async function getLocationDataFromZipCode(
-  apiUrl: string,
+  context: AppLoadContext,
   zipCode: string
 ) {
-  const url = new URL(apiUrl);
+  const url = new URL(context.cloudflare.env.OPENDATASOFT_API_URL);
 
   url.searchParams.append('where', `postal_code="${zipCode}" AND accuracy IS NOT NULL`);
   url.searchParams.append('limit', '1');
@@ -49,7 +51,9 @@ export default async function getLocationDataFromZipCode(
     country: data.results[0].country_code,
     city: data.results[0].place_name,
     state: data.results[0].admin_name1,
-    latitude: data.results[0].latitude,
-    longitude: data.results[0].longitude,
+    coordinates: {
+      latitude: data.results[0].latitude,
+      longitude: data.results[0].longitude,
+    },
   };
 }

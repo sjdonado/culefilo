@@ -2,8 +2,10 @@
 // by running `wrangler types`
 
 interface Env {
-	CULEFILO_KV: KVNamespace;
-	OPENDATASOFT_API_URL: "https://data.opendatasoft.com/api/explore/v2.1/catalog/datasets/geonames-postal-code@public/records";
-	AI_DEFAULT_INSTRUCTION: "You are an international chef, your responses are short, concise and always returned in a list in markdown format.";
-	AI: unknown;
+  CULEFILO_KV: KVNamespace;
+  AI: unknown;
+  OPENDATASOFT_API_URL: string; // updated manually
+  PLACES_API_URL: string; // updated manually
+  PLACES_API_KEY: string; // updated manually
+  AI_DEFAULT_INSTRUCTION: string; // updated manually
 }

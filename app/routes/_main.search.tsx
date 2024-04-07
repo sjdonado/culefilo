@@ -10,6 +10,7 @@ import { SearchResult, SearchSchema } from '~/schemas/search';
 
 import getLocationDataFromZipCode from '~/services/opendatasoft.server';
 import { getKVRecord, putKVRecord, runLLMRequest } from '~/services/cloudfare.server';
+import { getPlacesByTextAndCoordinates } from '~/services/places.server';
 
 import Input from '~/components/Input';
 import SubmitButton from '~/components/SubmitButton';
@@ -25,10 +26,13 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
 
   const { favoriteMealName, zipCode } = fieldValues.data;
 
-  const location = await getLocationDataFromZipCode(
-    context.cloudflare.env.OPENDATASOFT_API_URL,
-    zipCode
-  );
+  const location = await getLocationDataFromZipCode(context, zipCode);
+
+  if (!location) {
+    throw new Error(
+      `[${getLocationDataFromZipCode.name}] No results found for ${zipCode}`
+    );
+  }
 
   const mdListResponse = await runLLMRequest(
     context,
@@ -39,6 +43,16 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
   // Parse the markdown list to an array
   const restaurants = mdListResponse.split(/\d+\.\s/).filter(item => item.trim() !== '');
 
+  if (restaurants.length === 0) {
+    throw new Error(`[${runLLMRequest.name}] No results found for ${favoriteMealName}`);
+  }
+
+  const places = await getPlacesByTextAndCoordinates(
+    context,
+    restaurants[0],
+    location.coordinates
+  );
+
   const key = crypto.randomUUID();
 
   await putKVRecord(context, key, {
@@ -48,6 +62,7 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
     },
     location,
     restaurants,
+    places,
   });
 
   return redirect(`/search?id=${key}`);

@@ -1,0 +1,34 @@
+meta {
+  name: Places API - text search
+  type: http
+  seq: 3
+}
+
+post {
+  url: https://places.googleapis.com/v1/places:searchText
+  body: json
+  auth: none
+}
+
+headers {
+  X-Goog-Api-Key: {{PLACES_API_KEY}}
+  X-Goog-FieldMask: places.displayName,places.formattedAddress,places.googleMapsUri,places.location,places.rating,places.userRatingCount,places.priceLevel,places.currentOpeningHours,places.photos
+  Referer: http://localhost:8787
+}
+
+body:json {
+  {
+    "textQuery": "Bandeja Paisa",
+    "includedType": "restaurant",
+    "maxResultCount": 6,
+    "locationBias": {
+      "circle": {
+        "center": {
+          "latitude": 25.7791,
+          "longitude": -80.1978
+        },
+        "radius": 500
+      }
+    }
+  }
+}
