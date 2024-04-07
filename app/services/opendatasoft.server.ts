@@ -1,5 +1,7 @@
 import { AppLoadContext } from '@remix-run/cloudflare';
 
+import { PlaceGeoDataSchema } from '~/schemas/place';
+
 type PostalCodeRecord = {
   total_count: number;
   results: Array<{
@@ -22,23 +24,11 @@ type PostalCodeRecord = {
   }>;
 };
 
-export type GeoData = {
-  zipCode: string;
-  country: string;
-  city: string;
-  state: string;
-  coordinates: {
-    latitude: number;
-    longitude: number;
-  };
-};
-
 export default async function getLocationDataFromZipCode(
   context: AppLoadContext,
   countryCode: string,
   zipCode: string
 ) {
-  throw Error('bugsnag test - opendatasoft');
   const url = new URL(context.cloudflare.env.OPENDATASOFT_API_URL);
 
   url.searchParams.append(
@@ -63,7 +53,7 @@ export default async function getLocationDataFromZipCode(
     );
   }
 
-  return {
+  return PlaceGeoDataSchema.parse({
     zipCode: data.results[0].postal_code,
     country: data.results[0].country_code,
     city: data.results[0].place_name,
@@ -72,5 +62,5 @@ export default async function getLocationDataFromZipCode(
       latitude: data.results[0].latitude,
       longitude: data.results[0].longitude,
     },
-  } as GeoData;
+  });
 }
