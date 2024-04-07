@@ -24,11 +24,15 @@ type PostalCodeRecord = {
 
 export default async function getLocationDataFromZipCode(
   context: AppLoadContext,
+  countryCode: string,
   zipCode: string
 ) {
   const url = new URL(context.cloudflare.env.OPENDATASOFT_API_URL);
 
-  url.searchParams.append('where', `postal_code="${zipCode}" AND accuracy IS NOT NULL`);
+  url.searchParams.append(
+    'where',
+    `postal_code="${zipCode}" AND country_code="${countryCode}"`
+  );
   url.searchParams.append('limit', '1');
 
   const response = await fetch(url);

@@ -36,7 +36,7 @@ export async function runLLMRequest(
     },
   ];
 
-  const data = (await ai.run('@cf/mistral/mistral-7b-instruct-v0.1', {
+  const data = (await ai.run('@cf/openchat/openchat-3.5-0106', {
     messages,
   })) as AiTextGenerationOutputWithResponse;
 

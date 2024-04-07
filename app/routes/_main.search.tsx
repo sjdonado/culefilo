@@ -6,7 +6,7 @@ import { withZod } from '@remix-validated-form/with-zod';
 import type { LoaderFunctionArgs, ActionFunctionArgs } from '@remix-run/cloudflare';
 import { redirect, useLoaderData } from '@remix-run/react';
 
-import { SearchResult, SearchSchema } from '~/schemas/search';
+import { SearchResult, SearchResultSchema, SearchSchema } from '~/schemas/search';
 
 import getLocationDataFromZipCode from '~/services/opendatasoft.server';
 import { getKVRecord, putKVRecord, runLLMRequest } from '~/services/cloudfare.server';
@@ -14,6 +14,7 @@ import { getPlacesByTextAndCoordinates } from '~/services/places.server';
 
 import Input from '~/components/Input';
 import SubmitButton from '~/components/SubmitButton';
+import PlaceCard from '~/components/PlaceCard';
 
 const validator = withZod(SearchSchema);
 
@@ -26,7 +27,10 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
 
   const { favoriteMealName, zipCode } = fieldValues.data;
 
-  const location = await getLocationDataFromZipCode(context, zipCode);
+  // TODO: component asking for it (maybe a cute flag)
+  const countryCode = 'DE';
+
+  const location = await getLocationDataFromZipCode(context, countryCode, zipCode);
 
   if (!location) {
     throw new Error(
@@ -36,12 +40,14 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
 
   const mdListResponse = await runLLMRequest(
     context,
-    `List 6 other names for this meal "${favoriteMealName}" in this place "${location.country}"?`,
+    `other names for "${favoriteMealName}" (return answer in a CSV format, comma delimiter, max 6 items)`,
     context.cloudflare.env.AI_DEFAULT_INSTRUCTION
   );
 
   // Parse the markdown list to an array
-  const restaurants = mdListResponse.split(/\d+\.\s/).filter(item => item.trim() !== '');
+  const restaurants = mdListResponse
+    .split(',')
+    .filter(item => item.trim().replace(/\n/g, '') !== '');
 
   if (restaurants.length === 0) {
     throw new Error(`[${runLLMRequest.name}] No results found for ${favoriteMealName}`);
@@ -49,21 +55,25 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
 
   const places = await getPlacesByTextAndCoordinates(
     context,
-    restaurants[0],
+    favoriteMealName,
     location.coordinates
   );
 
+  console.log('results', { location, restaurants, places });
+
   const key = crypto.randomUUID();
 
-  await putKVRecord(context, key, {
-    input: {
-      favoriteMealName,
-      zipCode,
-    },
-    location,
-    restaurants,
-    places,
-  });
+  await putKVRecord(
+    context,
+    key,
+    SearchResultSchema.parse({
+      input: {
+        favoriteMealName,
+        zipCode,
+      },
+      places,
+    })
+  );
 
   return redirect(`/search?id=${key}`);
 };
@@ -80,6 +90,8 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
 
 export default function SearchPage() {
   const { search } = useLoaderData<typeof loader>();
+
+  console.log('search', search);
 
   return (
     <ValidatedForm validator={validator} method="post">
@@ -105,7 +117,11 @@ export default function SearchPage() {
       <div className="mt-6 flex justify-end gap-4">
         <SubmitButton message="Save" />
       </div>
-      {search && <div>{JSON.stringify(search, null, 2)}</div>}
+      <div className="mt-6 flex flex-col gap-4">
+        {(search?.places ?? []).map(place => (
+          <PlaceCard key={place.name} place={place} />
+        ))}
+      </div>
     </ValidatedForm>
   );
 }

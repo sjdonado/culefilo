@@ -7,7 +7,7 @@ compatibility_date = "2024-04-05"
 [vars]
 PLACES_API_URL = "https://places.googleapis.com/v1/places:searchText"
 OPENDATASOFT_API_URL = "https://data.opendatasoft.com/api/explore/v2.1/catalog/datasets/geonames-postal-code@public/records"
-AI_DEFAULT_INSTRUCTION = "You are an international chef, your responses are short, concise and always returned in a list in markdown format."
+AI_DEFAULT_INSTRUCTION = "You are a helpful assistant that it is direct, short responses."
 
 # Bind a D1 database. D1 is Cloudflare’s native serverless SQL database.
 # Docs: https://developers.cloudflare.com/pages/functions/bindings/#d1-databases
