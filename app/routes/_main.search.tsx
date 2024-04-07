@@ -58,7 +58,7 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
 
   const key = url.searchParams.get('id');
 
-  const search = await getKVRecord<SearchResult>(context, key ?? '');
+  const search = key ? await getKVRecord<SearchResult>(context, key) : null;
 
   return { search };
 };
@@ -90,7 +90,7 @@ export default function SearchPage() {
       <div className="mt-6 flex justify-end gap-4">
         <SubmitButton message="Save" />
       </div>
-      <div>{JSON.stringify(search, null, 2)}</div>
+      {search && <div>{JSON.stringify(search, null, 2)}</div>}
     </ValidatedForm>
   );
 }
