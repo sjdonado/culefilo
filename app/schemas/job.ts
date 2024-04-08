@@ -13,4 +13,13 @@ export const SearchJobSchema = z.object({
   logs: z.array(z.string()).optional(),
 });
 
+export const SearchJobSerializedSchema = SearchJobSchema.pick({
+  input: true,
+  state: true,
+  places: true,
+}).extend({
+  id: z.string(),
+});
+
 export type SearchJob = z.infer<typeof SearchJobSchema>;
+export type SearchJobSerialized = z.infer<typeof SearchJobSerializedSchema>;
