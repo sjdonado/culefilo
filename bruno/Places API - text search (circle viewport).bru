@@ -1,0 +1,35 @@
+meta {
+  name: Places API - text search (circle viewport)
+  type: http
+  seq: 4
+}
+
+post {
+  url: https://places.googleapis.com/v1/places:searchText
+  body: json
+  auth: none
+}
+
+headers {
+  X-Goog-Api-Key: {{PLACES_API_KEY}}
+  X-Goog-FieldMask: places.displayName,places.formattedAddress,places.googleMapsUri,places.location,places.rating,places.userRatingCount,places.priceLevel,places.currentOpeningHours,places.photos
+  Referer: http://localhost:8787
+}
+
+body:json {
+  {
+    "textQuery": "Patacones",
+    "includedType": "restaurant",
+    "rankPreference": "DISTANCE",
+    "locationBias": {
+      "circle": {
+        "center": {
+          "latitude": 52.5116,
+          "longitude": 13.1962
+        },
+        "radius": 500
+      }
+    },
+    "maxResultCount": 1
+  }
+}

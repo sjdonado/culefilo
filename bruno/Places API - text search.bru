@@ -12,23 +12,26 @@ post {
 
 headers {
   X-Goog-Api-Key: {{PLACES_API_KEY}}
-  X-Goog-FieldMask: places.displayName,places.formattedAddress,places.googleMapsUri,places.location,places.rating,places.userRatingCount,places.priceLevel,places.currentOpeningHours,places.photos
+  X-Goog-FieldMask: places.displayName,places.formattedAddress,places.googleMapsUri,places.location,places.rating,places.userRatingCount,places.priceLevel,places.currentOpeningHours,places.photos,places.reviews
   Referer: http://localhost:8787
 }
 
 body:json {
   {
-    "textQuery": "Bandeja Paisa",
+    "textQuery": "Patacones",
     "includedType": "restaurant",
-    "maxResultCount": 1,
-    "locationBias": {
-      "circle": {
-        "center": {
-          "latitude": 25.7791,
-          "longitude": -80.1978
+    "locationRestriction": {
+      "rectangle": {
+        "low": {
+          "latitude": 52.39663391970407,
+          "longitude": 12.922315639977199
         },
-        "radius": 500
+        "high": {
+          "latitude": 52.62656608029594,
+          "longitude": 13.4700843600228
+        }
       }
-    }
+    },
+    "maxResultCount": 3
   }
 }

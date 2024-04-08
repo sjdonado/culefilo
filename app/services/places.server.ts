@@ -1,6 +1,16 @@
 import { AppLoadContext } from '@remix-run/cloudflare';
+import { createRectangleFromCenter } from '~/utils/geo.server';
 
-type PlaceAPIResponse = {
+export enum PriceLevel {
+  Unspecified = 'PRICE_LEVEL_UNSPECIFIED',
+  Free = 'PRICE_LEVEL_FREE',
+  Inexpensive = 'PRICE_LEVEL_INEXPENSIVE',
+  Moderate = 'PRICE_LEVEL_MODERATE',
+  Expensive = 'PRICE_LEVEL_EXPENSIVE',
+  VeryExpensive = 'PRICE_LEVEL_VERY_EXPENSIVE',
+}
+
+export type PlaceAPIResponse = {
   places: {
     formattedAddress: string;
     location: {
@@ -9,22 +19,23 @@ type PlaceAPIResponse = {
     };
     rating: number;
     googleMapsUri: string;
-    priceLevel:
-      | 'PRICE_LEVEL_UNSPECIFIED'
-      | 'PRICE_LEVEL_FREE'
-      | 'PRICE_LEVEL_INEXPENSIVE'
-      | 'PRICE_LEVEL_MODERATE'
-      | 'PRICE_LEVEL_EXPENSIVE'
-      | 'PRICE_LEVEL_VERY_EXPENSIVE';
+    priceLevel: PriceLevel;
     userRatingCount: number;
     displayName: {
       text: string;
       languageCode: string;
     };
-    currentOpeningHours: {
-      openNow: boolean;
-      weekdayDescriptions: string[];
-    };
+    currentOpeningHours:
+      | {
+          openNow: boolean;
+          weekdayDescriptions: string[];
+        }
+      | undefined;
+    reviews:
+      | {
+          text: { text: string; languageCode: string };
+        }[]
+      | undefined;
     photos: {
       name: string;
       widthPx: number;
@@ -43,24 +54,36 @@ export async function getPlacesByTextAndCoordinates(
   text: string,
   coordinates: { latitude: number; longitude: number }
 ) {
+  console.log(
+    `[${getPlacesByTextAndCoordinates.name}] ${text} (${JSON.stringify(coordinates)})`
+  );
+
+  const viewport = createRectangleFromCenter(coordinates, 100);
+
   const payload = {
     textQuery: text,
     includedType: 'restaurant',
     maxResultCount: 6,
-    locationBias: {
-      circle: {
-        center: {
-          latitude: coordinates.latitude,
-          longitude: coordinates.longitude,
+    // locationRestriction does not support a circle viewport
+    locationRestriction: {
+      rectangle: {
+        low: {
+          latitude: viewport.sw.latitude,
+          longitude: viewport.sw.longitude,
         },
-        radius: 500, // meters
+        high: {
+          latitude: viewport.ne.latitude,
+          longitude: viewport.ne.longitude,
+        },
       },
     },
   };
 
-  console.log(`[Places API] ${JSON.stringify(payload, null, 2)}`);
+  console.log(
+    `[${getPlacesByTextAndCoordinates.name}] ${JSON.stringify(payload, null, 2)}`
+  );
 
-  const host = context.cloudflare.request?.headers.get('host') || 'localhost';
+  const host = context.cloudflare.request?.headers.get('host')!;
 
   const response = await fetch(context.cloudflare.env.PLACES_API_URL, {
     method: 'POST',
@@ -69,7 +92,7 @@ export async function getPlacesByTextAndCoordinates(
       Referer: host,
       'X-Goog-Api-Key': context.cloudflare.env.PLACES_API_KEY,
       'X-Goog-FieldMask':
-        'places.displayName,places.formattedAddress,places.googleMapsUri,places.location,places.rating,places.userRatingCount,places.priceLevel,places.currentOpeningHours,places.photos',
+        'places.displayName,places.formattedAddress,places.googleMapsUri,places.location,places.rating,places.userRatingCount,places.priceLevel,places.currentOpeningHours,places.reviews,places.photos',
     },
     body: JSON.stringify(payload),
   });
