@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { CSSProperties, useCallback, useEffect, useState } from 'react';
 import { MagnifyingGlassIcon, MapPinIcon } from '@heroicons/react/24/outline';
 
 import { ValidatedForm, validationError } from 'remix-validated-form';
@@ -62,7 +62,7 @@ export default function SearchPage() {
   const { jobId, searchJob } = useLoaderData<typeof loader>();
 
   const [jobState, setJobState] = useState<
-    { percentage: string; message: string } | undefined
+    { time: string; percentage: string; message: string } | undefined
   >();
 
   const startSearchJob = useCallback(async () => {
@@ -73,14 +73,15 @@ export default function SearchPage() {
         const [time, percentage, message] = event.data.split(',');
         console.log({ time, percentage, message });
 
-        setJobState({ percentage, message });
-
         if (message === DONE_JOB_MESSAGE) {
           eventSource.close();
-          setJobState(undefined);
           revalidator.revalidate();
+
+          setJobState(undefined);
           return;
         }
+
+        setJobState({ time, percentage, message });
       };
 
       return () => {
@@ -124,12 +125,14 @@ export default function SearchPage() {
         </div>
       </ValidatedForm>
       {jobState && (
-        <div className="flex flex-col gap-2">
-          <progress
-            className="progress progress-primary w-56"
-            value={jobState.percentage}
-            max="1"
-          />
+        <div className="flex flex-col justify-center items-center gap-4 mx-auto my-12">
+          <div
+            className="radial-progress"
+            style={{ '--value': jobState.percentage } as CSSProperties}
+            role="progressbar"
+          >
+            {jobState.percentage}%
+          </div>
           <p className="text-center text-sm">{jobState.message}</p>
         </div>
       )}

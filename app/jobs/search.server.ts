@@ -42,7 +42,7 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
   const encoder = new TextEncoder();
 
   const encodeMessage = (message: string, percentage: number) =>
-    encoder.encode(`data: ${Date.now()},${percentage.toFixed(2)},${message}\n\n`);
+    encoder.encode(`data: ${Date.now()},${(percentage * 100).toFixed(1)},${message}\n\n`);
 
   // if job has been executed
   if (job.state !== SearchJobState.Created) {
@@ -106,7 +106,7 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
 
         if (allPlaces.size < 3) {
           console.log(`[${startOrCheckSearchJob.name}] (${key}) LLM suggestions started`);
-          sendEvent('Looking for suggestions...', 0.2);
+          sendEvent('Looking for suggestions...', 0.4);
 
           const response = await runLLMRequest(
             context,
@@ -187,6 +187,10 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
               };
             })
         );
+
+        sendEvent(`Choosing the best thumbnails...`, 0.8);
+        // TODO: remove temp placeholder after implementing #18
+        await new Promise(resolve => setTimeout(resolve, 3000));
 
         await putKVRecord(
           context,
