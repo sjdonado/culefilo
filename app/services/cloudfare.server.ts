@@ -37,11 +37,14 @@ export async function runLLMRequest(
     },
   ];
 
-  const data = (await ai.run('@cf/openchat/openchat-3.5-0106', {
+  const data = (await ai.run('@hf/thebloke/llama-2-13b-chat-awq', {
     messages,
+    max_tokens: 512,
   })) as AiTextGenerationOutputWithResponse;
 
-  return data.response!;
+  console.log(`[${runLLMRequest.name}] ${JSON.stringify({ prompt, data }, null, 2)}`);
+
+  return data.response ?? '';
 }
 
 export async function runSummarizationRequest(

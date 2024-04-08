@@ -10,7 +10,10 @@ import {
   runLLMRequest,
   runSummarizationRequest,
 } from '~/services/cloudfare.server';
-import { getPlacesByTextAndCoordinates } from '~/services/places.server';
+import {
+  PlaceAPIResponse,
+  getPlacesByTextAndCoordinates,
+} from '~/services/places.server';
 
 export async function createSearchJob(
   context: AppLoadContext,
@@ -65,27 +68,7 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
           })
         );
 
-        console.log(`[${startOrCheckSearchJob.name}] (${key}) LLM suggestions started`);
-        sendEvent('Looking for your favorite meal...');
-
-        // TODO: remove this placeholder line - simulates the response time of the LLM request
-        await new Promise(resolve => setTimeout(resolve, 5000));
-        // const mdListResponse = await runLLMRequest(
-        //   context,
-        //   `other names for "${job.input.favoriteMealName}" (return answer in a CSV format, comma delimiter, max 6 items)`,
-        //   context.cloudflare.env.AI_DEFAULT_INSTRUCTION
-        // );
-        //
-        // const suggestions = mdListResponse
-        //   .split(',')
-        //   .filter(item => item.trim().replace(/\n/g, '') !== '');
-        //
-        // // Parse the markdown list to an array
-        // if (suggestions.length === 0) {
-        //   throw new Error(
-        //     `[${startOrCheckSearchJob.name}] No results found for ${job.input.favoriteMealName}`
-        //   );
-        // }
+        const allPlaces = new Map<string, PlaceAPIResponse['places'][0]>();
 
         await putKVRecord(
           context,
@@ -96,60 +79,104 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
           })
         );
 
-        console.log(`[${startOrCheckSearchJob.name}] (${key}) places search started`);
-        sendEvent('Looking for nearby places...');
+        const originalQuery = job.input.favoriteMealName;
+        const coordinates = job.geoData.coordinates;
 
-        const places = await getPlacesByTextAndCoordinates(
-          context,
-          job.input.favoriteMealName,
-          job.geoData.coordinates
-        );
+        async function searchAndAppendToAllPlaces(query: string) {
+          console.log(
+            `[${startOrCheckSearchJob.name}] (${key}) places search - query ${query}`
+          );
+          sendEvent(`Looking for nearby places with "${query}"...`);
 
-        // TODO: remove this placeholder line - simulates the time it takes to get places with multiple requests
-        await new Promise(resolve => setTimeout(resolve, 3000));
+          const places = await getPlacesByTextAndCoordinates(context, query, coordinates);
 
-        sendEvent('Almost done! processing results...');
+          (places ?? []).forEach(place => {
+            allPlaces.set(place.id, place);
+          });
+        }
+
+        await searchAndAppendToAllPlaces(originalQuery);
+
+        if (allPlaces.size < 3) {
+          console.log(`[${startOrCheckSearchJob.name}] (${key}) LLM suggestions started`);
+          sendEvent('Looking for suggestions...');
+
+          const response = await runLLMRequest(
+            context,
+            `Other names for this meal: "${originalQuery}" (return each name in quotes, no explanation)`,
+            context.cloudflare.env.AI_DEFAULT_INSTRUCTION
+          );
+
+          const suggestionsList =
+            response.match(/"([^"]+)"/g)?.map(item => item.replace(/"/g, '')) ?? [];
+
+          // remove duplicates
+          const suggestions = Array.from(
+            new Set(
+              suggestionsList.map(s => s.toLowerCase()).filter(s => s !== originalQuery)
+            )
+          );
+
+          if (suggestions.length === 0) {
+            console.error(
+              `[${startOrCheckSearchJob.name}] No suggestions found for ${originalQuery}: ${response}`
+            );
+          }
+
+          console.log(
+            `[${startOrCheckSearchJob.name}] (${key}) LLM suggestions: ${suggestions}`
+          );
+
+          while (allPlaces.size < 3 && suggestions.length > 0) {
+            const query = suggestions.shift();
+            await searchAndAppendToAllPlaces(query!);
+          }
+        }
+
+        sendEvent('Almost done! summarizing results...');
 
         const placesWithDescriptions = await Promise.all(
-          (places ?? []).slice(0, 3).map(async place => {
-            const name = place.displayName.text;
-            const address = place.formattedAddress;
-            const url = place.googleMapsUri;
+          Array.from(allPlaces.values())
+            .slice(0, 3)
+            .map(async place => {
+              const name = place.displayName.text;
+              const address = place.formattedAddress;
+              const url = place.googleMapsUri;
 
-            const rating = { number: place.rating, count: place.userRatingCount };
-            const priceLevel = place.priceLevel;
-            const isOpen = place.currentOpeningHours?.openNow;
+              const rating = { number: place.rating, count: place.userRatingCount };
+              const priceLevel = place.priceLevel;
+              const isOpen = place.currentOpeningHours?.openNow;
 
-            const reviews = (place.reviews ?? []).map(review => review.text.text);
+              const reviews = (place.reviews ?? []).map(review => review.text.text);
 
-            console.log(
-              `[${startOrCheckSearchJob.name}] place ${JSON.stringify(
-                {
-                  name,
-                  address,
-                  url,
-                  reviews,
-                  rating,
-                  priceLevel,
-                  isOpen,
-                },
-                null,
-                2
-              )}`
-            );
+              console.log(
+                `[${startOrCheckSearchJob.name}] place ${JSON.stringify(
+                  {
+                    name,
+                    address,
+                    url,
+                    reviews,
+                    rating,
+                    priceLevel,
+                    isOpen,
+                  },
+                  null,
+                  2
+                )}`
+              );
 
-            const description = await runSummarizationRequest(context, reviews);
+              const description = await runSummarizationRequest(context, reviews);
 
-            return {
-              name,
-              description,
-              address,
-              url,
-              rating,
-              priceLevel,
-              isOpen,
-            };
-          })
+              return {
+                name,
+                description,
+                address,
+                url,
+                rating,
+                priceLevel,
+                isOpen,
+              };
+            })
         );
 
         await putKVRecord(

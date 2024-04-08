@@ -12,6 +12,7 @@ export enum PriceLevel {
 
 export type PlaceAPIResponse = {
   places: {
+    id: string;
     formattedAddress: string;
     location: {
       latitude: number;
@@ -54,11 +55,14 @@ export async function getPlacesByTextAndCoordinates(
   text: string,
   coordinates: { latitude: number; longitude: number }
 ) {
-  console.log(
-    `[${getPlacesByTextAndCoordinates.name}] ${text} (${JSON.stringify(coordinates)})`
-  );
+  const apiKey = context.cloudflare.env.PLACES_API_KEY;
 
-  const viewport = createRectangleFromCenter(coordinates, 100);
+  if (!apiKey) {
+    throw new Error('Missing Google Places API key');
+  }
+
+  // search within 150 km2
+  const viewport = createRectangleFromCenter(coordinates, 150);
 
   const payload = {
     textQuery: text,
@@ -79,10 +83,6 @@ export async function getPlacesByTextAndCoordinates(
     },
   };
 
-  console.log(
-    `[${getPlacesByTextAndCoordinates.name}] ${JSON.stringify(payload, null, 2)}`
-  );
-
   const host = context.cloudflare.request?.headers.get('host')!;
 
   const response = await fetch(context.cloudflare.env.PLACES_API_URL, {
@@ -90,14 +90,28 @@ export async function getPlacesByTextAndCoordinates(
     headers: {
       'Content-Type': 'application/json',
       Referer: host,
-      'X-Goog-Api-Key': context.cloudflare.env.PLACES_API_KEY,
+      'X-Goog-Api-Key': apiKey,
       'X-Goog-FieldMask':
-        'places.displayName,places.formattedAddress,places.googleMapsUri,places.location,places.rating,places.userRatingCount,places.priceLevel,places.currentOpeningHours,places.reviews,places.photos',
+        'places.id,places.displayName,places.formattedAddress,places.googleMapsUri,places.location,places.rating,places.userRatingCount,places.priceLevel,places.currentOpeningHours,places.reviews,places.photos',
     },
     body: JSON.stringify(payload),
   });
 
   const data = await response.json<PlaceAPIResponse>();
+
+  console.log(
+    `[${getPlacesByTextAndCoordinates.name}] ${JSON.stringify(
+      {
+        payload,
+        results: (data.places ?? []).map(place => ({
+          id: place.id,
+          name: place.displayName.text,
+        })),
+      },
+      null,
+      2
+    )}`
+  );
 
   return data.places;
 }
