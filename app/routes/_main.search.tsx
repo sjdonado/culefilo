@@ -61,7 +61,9 @@ export default function SearchPage() {
   const revalidator = useRevalidator();
   const { jobId, searchJob } = useLoaderData<typeof loader>();
 
-  const [jobMessages, setJobMessage] = useState<string[]>([]);
+  const [jobState, setJobState] = useState<
+    { percentage: string; message: string } | undefined
+  >();
 
   const startSearchJob = useCallback(async () => {
     if (searchJob?.state === SearchJobState.Created) {
@@ -71,13 +73,14 @@ export default function SearchPage() {
         const [time, percentage, message] = event.data.split(',');
         console.log({ time, percentage, message });
 
+        setJobState({ percentage, message });
+
         if (message === DONE_JOB_MESSAGE) {
           eventSource.close();
+          setJobState(undefined);
           revalidator.revalidate();
           return;
         }
-
-        setJobMessage(message);
       };
 
       return () => {
@@ -90,11 +93,7 @@ export default function SearchPage() {
     startSearchJob();
   }, [startSearchJob]);
 
-  console.log('search', searchJob);
-
-  const isJobInProgress = [SearchJobState.Created, SearchJobState.Running].includes(
-    searchJob?.state as SearchJobState
-  );
+  console.log('search', searchJob, 'jobState', jobState);
 
   return (
     <div className="flex flex-col gap-6">
@@ -124,13 +123,14 @@ export default function SearchPage() {
           <SubmitButton message="Submit" disabled={!!searchJob} />
         </div>
       </ValidatedForm>
-      {isJobInProgress && (
+      {jobState && (
         <div className="flex flex-col gap-2">
-          {jobMessages.map((message, index) => (
-            <p className="text-center text-sm" key={index}>
-              {message}
-            </p>
-          ))}
+          <progress
+            className="progress progress-primary w-56"
+            value={jobState.percentage}
+            max="1"
+          />
+          <p className="text-center text-sm">{jobState.message}</p>
         </div>
       )}
       {searchJob?.state === SearchJobState.Failure && (

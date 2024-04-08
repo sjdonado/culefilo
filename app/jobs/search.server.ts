@@ -42,7 +42,7 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
   const encoder = new TextEncoder();
 
   const encodeMessage = (message: string, percentage: number) =>
-    encoder.encode(`data: ${Date.now()},${percentage},${message}\n\n`);
+    encoder.encode(`data: ${Date.now()},${percentage.toFixed(2)},${message}\n\n`);
 
   // if job has been executed
   if (job.state !== SearchJobState.Created) {
