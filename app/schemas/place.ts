@@ -24,15 +24,16 @@ export const PlaceParsedSchema = PlaceSchema.pick({
 })
   .extend({
     rating: z.object({
-      number: z.number(),
-      count: z.number(),
+      number: z.number().optional(),
+      count: z.number().optional(),
     }),
     priceLevel: z.string().optional(),
     isOpen: z.boolean().optional(),
   })
   .transform(({ rating, priceLevel, ...data }) => ({
     ...data,
-    rating: `${rating.number} (${rating.count})`,
+    rating:
+      !!rating.number && !!rating.count ? `${rating.number} (${rating.count})` : null,
     price: parsePlacePriceLevel(priceLevel ?? ''),
     isOpen: data.isOpen ?? null,
   }));

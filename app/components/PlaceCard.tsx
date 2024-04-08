@@ -16,9 +16,11 @@ export default function PlaceCard({ place }: { place: Place }) {
             {place.name}
           </a>
           <div className="flex gap-2">
-            <div className="badge badge-ghost">
-              <span className="text-xs font-bold">★{place.rating}</span>
-            </div>
+            {place.rating && (
+              <div className="badge badge-ghost">
+                <span className="text-xs font-bold">★{place.rating}</span>
+              </div>
+            )}
             {place.isOpen !== null && (
               <div className="badge badge-ghost">
                 <span className="text-xs font-bold">
@@ -34,7 +36,7 @@ export default function PlaceCard({ place }: { place: Place }) {
           </div>
         </div>
         <p className="text-sm text-gray-500">{place.address}</p>
-        <p className="text-justify">{place.description}</p>
+        <p className="text-justify">{place.description ?? 'No reviews found.'}</p>
       </div>
     </div>
   );
