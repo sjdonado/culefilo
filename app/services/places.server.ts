@@ -55,12 +55,6 @@ export async function getPlacesByTextAndCoordinates(
   text: string,
   coordinates: { latitude: number; longitude: number }
 ) {
-  const apiKey = context.cloudflare.env.PLACES_API_KEY;
-
-  if (!apiKey) {
-    throw new Error('Missing Google Places API key');
-  }
-
   // search within 150 km2
   const viewport = createRectangleFromCenter(coordinates, 150);
 
@@ -83,7 +77,14 @@ export async function getPlacesByTextAndCoordinates(
     },
   };
 
+  const apiKey = context.cloudflare.env.PLACES_API_KEY;
   const host = context.cloudflare.request?.headers.get('host')!;
+
+  if (!apiKey || !host) {
+    throw new Error(
+      `[${getPlacesByTextAndCoordinates.name}] No API key or host found. ${apiKey?.length} ${host?.length}`
+    );
+  }
 
   const response = await fetch(context.cloudflare.env.PLACES_API_URL, {
     method: 'POST',

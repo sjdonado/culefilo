@@ -9,8 +9,8 @@ export const SearchJobSchema = z.object({
   input: SearchSchema,
   geoData: PlaceGeoDataSchema,
   state: z.enum(ALL_SEARCH_JOB_STATES),
-  suggestions: z.array(z.string()).optional(),
   places: z.array(PlaceSchema).optional(),
+  logs: z.array(z.string()).optional(),
 });
 
 export type SearchJob = z.infer<typeof SearchJobSchema>;

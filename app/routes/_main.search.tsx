@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { CSSProperties, useCallback, useEffect, useState } from 'react';
 import { MagnifyingGlassIcon, MapPinIcon } from '@heroicons/react/24/outline';
 
 import { ValidatedForm, validationError } from 'remix-validated-form';
@@ -7,7 +7,7 @@ import { withZod } from '@remix-validated-form/with-zod';
 import type { LoaderFunctionArgs, ActionFunctionArgs } from '@remix-run/cloudflare';
 import { redirect, useLoaderData, useRevalidator } from '@remix-run/react';
 
-import { SearchJobState } from '~/constants/job';
+import { DONE_JOB_MESSAGE, SearchJobState } from '~/constants/job';
 
 import { SearchSchema } from '~/schemas/search';
 import { SearchJob } from '~/schemas/job';
@@ -61,23 +61,29 @@ export default function SearchPage() {
   const revalidator = useRevalidator();
   const { jobId, searchJob } = useLoaderData<typeof loader>();
 
-  const [jobMessages, setJobMessage] = useState<string[]>([]);
+  const [jobState, setJobState] = useState<
+    { time: string; percentage: string; message: string } | undefined
+  >();
+
+  const [isLogsVisible, setIsLogsVisible] = useState(true);
 
   const startSearchJob = useCallback(async () => {
     if (searchJob?.state === SearchJobState.Created) {
       const eventSource = new EventSource(`/search/job/${jobId}`);
 
       eventSource.onmessage = event => {
-        const decodedValue = event.data;
-        console.log(decodedValue);
+        const [time, percentage, message] = event.data.split(',');
+        console.log({ time, percentage, message });
 
-        if (decodedValue === 'done') {
+        if (message === DONE_JOB_MESSAGE) {
           eventSource.close();
           revalidator.revalidate();
+
+          setJobState(undefined);
           return;
         }
 
-        setJobMessage(prev => [...prev, decodedValue]);
+        setJobState({ time, percentage, message });
       };
 
       return () => {
@@ -90,11 +96,7 @@ export default function SearchPage() {
     startSearchJob();
   }, [startSearchJob]);
 
-  console.log('search', searchJob);
-
-  const isJobInProgress = [SearchJobState.Created, SearchJobState.Running].includes(
-    searchJob?.state as SearchJobState
-  );
+  console.log('search', searchJob, 'jobState', jobState);
 
   return (
     <div className="flex flex-col gap-6">
@@ -120,17 +122,18 @@ export default function SearchPage() {
             />
           </div>
         </div>
-        <div className="flex justify-end gap-4">
-          <SubmitButton message="Submit" disabled={!!searchJob} />
-        </div>
+        <SubmitButton className="w-full" message="Submit" disabled={!!jobState} />
       </ValidatedForm>
-      {isJobInProgress && (
-        <div className="flex flex-col gap-2">
-          {jobMessages.map((message, index) => (
-            <p className="text-center text-sm" key={index}>
-              {message}
-            </p>
-          ))}
+      {jobState && (
+        <div className="flex flex-col justify-center items-center gap-4 mx-auto my-12">
+          <div
+            className="radial-progress"
+            style={{ '--value': jobState.percentage } as CSSProperties}
+            role="progressbar"
+          >
+            {jobState.percentage}%
+          </div>
+          <p className="text-center text-sm">{jobState.message}</p>
         </div>
       )}
       {searchJob?.state === SearchJobState.Failure && (
@@ -138,9 +141,30 @@ export default function SearchPage() {
       )}
       {searchJob?.state === SearchJobState.Success && (
         <div className="flex flex-col gap-4">
+          {(searchJob?.places ?? []).length === 0 && (
+            <p className="text-center my-12">No results found :(</p>
+          )}
           {(searchJob?.places ?? []).map(place => (
             <PlaceCard key={place.name} place={place} />
           ))}
+        </div>
+      )}
+      {[SearchJobState.Success, SearchJobState.Failure].includes(
+        searchJob?.state as SearchJobState
+      ) && (
+        <div className="flex flex-col justify-center items-end gap-4 mb-4">
+          <button className="link" onClick={() => setIsLogsVisible(!isLogsVisible)}>
+            {isLogsVisible ? 'Hide' : 'Show'} search logs
+          </button>
+          {isLogsVisible && (
+            <div className="flex flex-col items-start gap-2 w-full">
+              {(searchJob?.logs ?? []).map(log => (
+                <p key={log} className="text-sm text-gray-500">
+                  {log}
+                </p>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
