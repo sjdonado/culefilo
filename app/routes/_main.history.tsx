@@ -18,6 +18,7 @@ export const loader = async ({ context }: LoaderFunctionArgs) => {
         input: record.input,
         state: record.state,
         places: record.places,
+        createdAt: record.createdAt,
       });
 
       if (result.success) {
@@ -26,18 +27,21 @@ export const loader = async ({ context }: LoaderFunctionArgs) => {
     })
   );
 
+  const sortedSearches = searches
+    .filter(Boolean) // TEMPFIX: didn't find a way to purge the KV local cache
+    .sort((a, b) => b!.createdAt - a!.createdAt);
+
   return {
-    searches: searches.filter(Boolean), // TEMPFIX: didn't find a way to purge the KV local cache
+    searches: sortedSearches,
   };
 };
 
 export default function HistoryPage() {
   const { searches } = useLoaderData<typeof loader>();
 
-  console.log(searches);
-
   return (
     <div className="flex flex-col gap-6">
+      {searches.length === 0 && <p className="text-center my-12">No results found :(</p>}
       {searches.map(search => (
         <SearchCard key={search.id} search={search} />
       ))}

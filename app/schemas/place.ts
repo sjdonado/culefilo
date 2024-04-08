@@ -12,18 +12,26 @@ export const PlaceSchema = z.object({
   isOpen: z.boolean().nullable(),
 });
 
-export const PlaceSerializedSchema = PlaceSchema.extend({
-  rating: z.object({
-    number: z.number(),
-    count: z.number(),
-  }),
-  priceLevel: z.string().optional(),
-}).transform(({ rating, priceLevel, ...data }) => ({
-  ...data,
-  rating: `${rating.number} (${rating.count})`,
-  price: parsePlacePriceLevel(priceLevel ?? ''),
-  isOpen: data.isOpen ?? null,
-}));
+export const PlaceParsedSchema = PlaceSchema.pick({
+  name: true,
+  description: true,
+  address: true,
+  url: true,
+})
+  .extend({
+    rating: z.object({
+      number: z.number(),
+      count: z.number(),
+    }),
+    priceLevel: z.string().optional(),
+    isOpen: z.boolean().optional(),
+  })
+  .transform(({ rating, priceLevel, ...data }) => ({
+    ...data,
+    rating: `${rating.number} (${rating.count})`,
+    price: parsePlacePriceLevel(priceLevel ?? ''),
+    isOpen: data.isOpen ?? null,
+  }));
 
 export const PlaceGeoDataSchema = z.object({
   zipCode: z.string(),
