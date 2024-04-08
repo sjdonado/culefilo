@@ -65,7 +65,7 @@ export default function SearchPage() {
     { time: string; percentage: string; message: string } | undefined
   >();
 
-  const [isLogsVisible, setIsLogsVisible] = useState(false);
+  const [isLogsVisible, setIsLogsVisible] = useState(true);
 
   const startSearchJob = useCallback(async () => {
     if (searchJob?.state === SearchJobState.Created) {
@@ -122,7 +122,7 @@ export default function SearchPage() {
             />
           </div>
         </div>
-        <SubmitButton className="w-full" message="Submit" disabled={!!searchJob} />
+        <SubmitButton className="w-full" message="Submit" disabled={!!jobState} />
       </ValidatedForm>
       {jobState && (
         <div className="flex flex-col justify-center items-center gap-4 mx-auto my-12">
@@ -141,6 +141,9 @@ export default function SearchPage() {
       )}
       {searchJob?.state === SearchJobState.Success && (
         <div className="flex flex-col gap-4">
+          {(searchJob?.places ?? []).length === 0 && (
+            <p className="text-center my-12">No results found :(</p>
+          )}
           {(searchJob?.places ?? []).map(place => (
             <PlaceCard key={place.name} place={place} />
           ))}
@@ -151,10 +154,10 @@ export default function SearchPage() {
       ) && (
         <div className="flex flex-col justify-center items-end gap-4 mb-4">
           <button className="link" onClick={() => setIsLogsVisible(!isLogsVisible)}>
-            See search logs
+            {isLogsVisible ? 'Hide' : 'Show'} search logs
           </button>
           {isLogsVisible && (
-            <div className="flex flex-col items-start gap-4 w-full">
+            <div className="flex flex-col items-start gap-2 w-full">
               {(searchJob?.logs ?? []).map(log => (
                 <p key={log} className="text-sm text-gray-500">
                   {log}
