@@ -10,7 +10,10 @@ import {
   runLLMRequest,
   runSummarizationRequest,
 } from '~/services/cloudfare.server';
-import { getPlacesByTextAndCoordinates } from '~/services/places.server';
+import {
+  PlaceAPIResponse,
+  getPlacesByTextAndCoordinates,
+} from '~/services/places.server';
 
 export async function createSearchJob(
   context: AppLoadContext,
@@ -65,27 +68,7 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
           })
         );
 
-        console.log(`[${startOrCheckSearchJob.name}] (${key}) LLM suggestions started`);
-        sendEvent('Looking for your favorite meal...');
-
-        // TODO: remove this placeholder line - simulates the response time of the LLM request
-        await new Promise(resolve => setTimeout(resolve, 5000));
-        // const mdListResponse = await runLLMRequest(
-        //   context,
-        //   `other names for "${job.input.favoriteMealName}" (return answer in a CSV format, comma delimiter, max 6 items)`,
-        //   context.cloudflare.env.AI_DEFAULT_INSTRUCTION
-        // );
-        //
-        // const suggestions = mdListResponse
-        //   .split(',')
-        //   .filter(item => item.trim().replace(/\n/g, '') !== '');
-        //
-        // // Parse the markdown list to an array
-        // if (suggestions.length === 0) {
-        //   throw new Error(
-        //     `[${startOrCheckSearchJob.name}] No results found for ${job.input.favoriteMealName}`
-        //   );
-        // }
+        const allPlaces: PlaceAPIResponse['places'] = [];
 
         await putKVRecord(
           context,
@@ -96,22 +79,58 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
           })
         );
 
-        console.log(`[${startOrCheckSearchJob.name}] (${key}) places search started`);
-        sendEvent('Looking for nearby places...');
+        const originalQuery = job.input.favoriteMealName;
+        const coordinates = job.geoData.coordinates;
 
-        const places = await getPlacesByTextAndCoordinates(
-          context,
-          job.input.favoriteMealName,
-          job.geoData.coordinates
-        );
+        async function placesSearch(query: string) {
+          console.log(
+            `[${startOrCheckSearchJob.name}] (${key}) places search - query ${query}`
+          );
+          sendEvent(`Looking for nearby places with "${query}"...`);
 
-        // TODO: remove this placeholder line - simulates the time it takes to get places with multiple requests
-        await new Promise(resolve => setTimeout(resolve, 3000));
+          const places = await getPlacesByTextAndCoordinates(context, query, coordinates);
 
-        sendEvent('Almost done! processing results...');
+          allPlaces.push(...places);
+        }
+
+        placesSearch(originalQuery);
+
+        if (allPlaces.length < 3) {
+          console.log(`[${startOrCheckSearchJob.name}] (${key}) LLM suggestions started`);
+          sendEvent('Looking for suggestions...');
+
+          const mdListResponse = await runLLMRequest(
+            context,
+            `Other names for "${originalQuery}" (return answer in a CSV format, comma delimiter, max 6 items)`,
+            context.cloudflare.env.AI_DEFAULT_INSTRUCTION
+          );
+
+          const suggestions = mdListResponse
+            .split(',')
+            .filter(item => item.trim().replace(/\n/g, '') !== '');
+
+          // Parse the markdown list to an array
+          if (suggestions.length === 0) {
+            console.error(
+              `[${startOrCheckSearchJob.name}] No suggestions found for ${originalQuery}: ${mdListResponse}`
+            );
+          }
+
+          while (allPlaces.length < 3) {
+            const query = suggestions.shift();
+
+            if (!query) {
+              break;
+            }
+
+            await placesSearch(query);
+          }
+        }
+
+        sendEvent('Almost done! summarizing results...');
 
         const placesWithDescriptions = await Promise.all(
-          (places ?? []).slice(0, 3).map(async place => {
+          allPlaces.slice(0, 3).map(async place => {
             const name = place.displayName.text;
             const address = place.formattedAddress;
             const url = place.googleMapsUri;
