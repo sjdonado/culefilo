@@ -46,7 +46,6 @@ export async function runLLMRequest(
 
 export async function runSummarizationRequest(
   context: AppLoadContext,
-  name: string,
   reviews: string[]
 ) {
   // https://developers.cloudflare.com/workers-ai/configuration/bindings/

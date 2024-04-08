@@ -1,6 +1,15 @@
 import { AppLoadContext } from '@remix-run/cloudflare';
 import { createRectangleFromCenter } from '~/utils/geo.server';
 
+export enum PriceLevel {
+  Unspecified = 'PRICE_LEVEL_UNSPECIFIED',
+  Free = 'PRICE_LEVEL_FREE',
+  Inexpensive = 'PRICE_LEVEL_INEXPENSIVE',
+  Moderate = 'PRICE_LEVEL_MODERATE',
+  Expensive = 'PRICE_LEVEL_EXPENSIVE',
+  VeryExpensive = 'PRICE_LEVEL_VERY_EXPENSIVE',
+}
+
 export type PlaceAPIResponse = {
   places: {
     formattedAddress: string;
@@ -10,25 +19,23 @@ export type PlaceAPIResponse = {
     };
     rating: number;
     googleMapsUri: string;
-    priceLevel:
-      | 'PRICE_LEVEL_UNSPECIFIED'
-      | 'PRICE_LEVEL_FREE'
-      | 'PRICE_LEVEL_INEXPENSIVE'
-      | 'PRICE_LEVEL_MODERATE'
-      | 'PRICE_LEVEL_EXPENSIVE'
-      | 'PRICE_LEVEL_VERY_EXPENSIVE';
+    priceLevel: PriceLevel;
     userRatingCount: number;
     displayName: {
       text: string;
       languageCode: string;
     };
-    currentOpeningHours: {
-      openNow: boolean;
-      weekdayDescriptions: string[];
-    };
-    reviews: {
-      text: { text: string; languageCode: string };
-    }[];
+    currentOpeningHours:
+      | {
+          openNow: boolean;
+          weekdayDescriptions: string[];
+        }
+      | undefined;
+    reviews:
+      | {
+          text: { text: string; languageCode: string };
+        }[]
+      | undefined;
     photos: {
       name: string;
       widthPx: number;

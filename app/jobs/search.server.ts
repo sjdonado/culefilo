@@ -97,7 +97,7 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
         );
 
         console.log(`[${startOrCheckSearchJob.name}] (${key}) places search started`);
-        sendEvent('Looking for places...');
+        sendEvent('Looking for nearby places...');
 
         const places = await getPlacesByTextAndCoordinates(
           context,
@@ -115,7 +115,28 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
             const name = place.displayName.text;
             const address = place.formattedAddress;
             const url = place.googleMapsUri;
-            const reviews = place.reviews.map(review => review.text.text);
+
+            const rating = { number: place.rating, count: place.userRatingCount };
+            const priceLevel = place.priceLevel;
+            const isOpen = place.currentOpeningHours?.openNow;
+
+            const reviews = (place.reviews ?? []).map(review => review.text.text);
+
+            console.log(
+              `[${startOrCheckSearchJob.name}] place ${JSON.stringify(
+                {
+                  name,
+                  address,
+                  url,
+                  reviews,
+                  rating,
+                  priceLevel,
+                  isOpen,
+                },
+                null,
+                2
+              )}`
+            );
 
             const description = await runSummarizationRequest(context, reviews);
 
@@ -124,12 +145,9 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
               description,
               address,
               url,
-              rating: {
-                number: place.rating,
-                count: place.userRatingCount,
-              },
-              priceLevel: place.priceLevel,
-              isOpen: place.currentOpeningHours?.openNow,
+              rating,
+              priceLevel,
+              isOpen,
             };
           })
         );
