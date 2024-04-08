@@ -68,7 +68,7 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
           })
         );
 
-        const allPlaces: PlaceAPIResponse['places'] = [];
+        const allPlaces = new Map<string, PlaceAPIResponse['places'][0]>();
 
         await putKVRecord(
           context,
@@ -82,7 +82,7 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
         const originalQuery = job.input.favoriteMealName;
         const coordinates = job.geoData.coordinates;
 
-        async function placesSearch(query: string) {
+        async function searchAndAppendToAllPlaces(query: string) {
           console.log(
             `[${startOrCheckSearchJob.name}] (${key}) places search - query ${query}`
           );
@@ -90,47 +90,42 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
 
           const places = await getPlacesByTextAndCoordinates(context, query, coordinates);
 
-          allPlaces.push(...places);
+          (places ?? []).forEach(place => {
+            allPlaces.set(place.id, place);
+          });
         }
 
-        placesSearch(originalQuery);
+        await searchAndAppendToAllPlaces(originalQuery);
 
-        if (allPlaces.length < 3) {
+        if (allPlaces.size < 3) {
           console.log(`[${startOrCheckSearchJob.name}] (${key}) LLM suggestions started`);
           sendEvent('Looking for suggestions...');
 
-          const mdListResponse = await runLLMRequest(
+          const response = await runLLMRequest(
             context,
-            `Other names for "${originalQuery}" (return answer in a CSV format, comma delimiter, max 6 items)`,
+            `Other names for this meal: "${originalQuery}" (return each name in quotes, no explanation)`,
             context.cloudflare.env.AI_DEFAULT_INSTRUCTION
           );
 
-          const suggestions = mdListResponse
-            .split(',')
-            .filter(item => item.trim().replace(/\n/g, '') !== '');
+          const suggestions =
+            response.match(/"([^"]+)"/g)?.map(item => item.replace(/"/g, '')) ?? [];
 
-          // Parse the markdown list to an array
           if (suggestions.length === 0) {
             console.error(
-              `[${startOrCheckSearchJob.name}] No suggestions found for ${originalQuery}: ${mdListResponse}`
+              `[${startOrCheckSearchJob.name}] No suggestions found for ${originalQuery}: ${response}`
             );
           }
 
-          while (allPlaces.length < 3) {
+          while (allPlaces.size < 3 && suggestions.length > 0) {
             const query = suggestions.shift();
-
-            if (!query) {
-              break;
-            }
-
-            await placesSearch(query);
+            await searchAndAppendToAllPlaces(query!);
           }
         }
 
         sendEvent('Almost done! summarizing results...');
 
         const placesWithDescriptions = await Promise.all(
-          allPlaces.slice(0, 3).map(async place => {
+          Array.from(allPlaces.values()).map(async place => {
             const name = place.displayName.text;
             const address = place.formattedAddress;
             const url = place.googleMapsUri;
