@@ -2,23 +2,34 @@ import { z } from 'zod';
 
 import { PriceLevel } from '~/services/places.server';
 
-export const PlaceSchema = z
-  .object({
-    name: z.string(),
-    description: z.string(),
-    address: z.string(),
-    url: z.string(),
+export const PlaceSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  address: z.string(),
+  url: z.string(),
+  rating: z.string(),
+  price: z.string().nullable(),
+  isOpen: z.boolean().nullable(),
+});
+
+export const PlaceParsedSchema = PlaceSchema.pick({
+  name: true,
+  description: true,
+  address: true,
+  url: true,
+})
+  .extend({
     rating: z.object({
       number: z.number(),
       count: z.number(),
     }),
     priceLevel: z.string().optional(),
-    isOpen: z.boolean().nullable(),
+    isOpen: z.boolean().optional(),
   })
-  .transform(data => ({
+  .transform(({ rating, priceLevel, ...data }) => ({
     ...data,
-    rating: `${data.rating.number} (${data.rating.count})`,
-    price: parsePlacePriceLevel(data.priceLevel ?? ''),
+    rating: `${rating.number} (${rating.count})`,
+    price: parsePlacePriceLevel(priceLevel ?? ''),
     isOpen: data.isOpen ?? null,
   }));
 

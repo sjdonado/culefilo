@@ -29,6 +29,7 @@ export async function createSearchJob(
     },
     state: SearchJobState.Created,
     geoData,
+    createdAt: Date.now(),
   });
 
   await putKVRecord(context, key, initState);

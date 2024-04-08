@@ -1,5 +1,4 @@
 import { Ai } from '@cloudflare/ai';
-import { AiSummarizationOutput } from '@cloudflare/ai/dist/ai/tasks/summarization';
 import type { AiTextGenerationOutput } from '@cloudflare/ai/dist/ai/tasks/text-generation';
 
 import { AppLoadContext } from '@remix-run/cloudflare';
@@ -9,12 +8,26 @@ type AiTextGenerationOutputWithResponse = Extract<
   { response?: string }
 >;
 
-export function putKVRecord<T>(context: AppLoadContext, key: string, value: T) {
+export async function putKVRecord<T>(context: AppLoadContext, key: string, value: T) {
   return context.cloudflare.env.CULEFILO_KV.put(key, JSON.stringify(value));
 }
 
-export function getKVRecord<T>(context: AppLoadContext, key: string) {
+export async function getKVRecord<T>(context: AppLoadContext, key: string) {
   return context.cloudflare.env.CULEFILO_KV.get(key, { type: 'json' }) as Promise<T>;
+}
+
+export async function getAllKVRecords<T>(context: AppLoadContext) {
+  const data = await context.cloudflare.env.CULEFILO_KV.list({ limit: 10 });
+
+  return Promise.all(
+    data.keys.map(async ({ name }) => {
+      const record = await getKVRecord<T>(context, name);
+      return {
+        id: name,
+        ...record,
+      };
+    })
+  );
 }
 
 export async function runLLMRequest(

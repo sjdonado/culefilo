@@ -5,7 +5,7 @@ import { ValidatedForm, validationError } from 'remix-validated-form';
 import { withZod } from '@remix-validated-form/with-zod';
 
 import type { LoaderFunctionArgs, ActionFunctionArgs } from '@remix-run/cloudflare';
-import { redirect, useLoaderData, useRevalidator } from '@remix-run/react';
+import { Link, redirect, useLoaderData, useRevalidator } from '@remix-run/react';
 
 import { DONE_JOB_MESSAGE, SearchJobState } from '~/constants/job';
 
@@ -65,8 +65,6 @@ export default function SearchPage() {
     { time: string; percentage: string; message: string } | undefined
   >();
 
-  const [isLogsVisible, setIsLogsVisible] = useState(true);
-
   const startSearchJob = useCallback(async () => {
     if (searchJob?.state === SearchJobState.Created) {
       const eventSource = new EventSource(`/search/job/${jobId}`);
@@ -111,6 +109,7 @@ export default function SearchPage() {
               placeholder="Burger with fries"
               icon={<MagnifyingGlassIcon className="form-input-icon" />}
               defaultValue={searchJob?.input.favoriteMealName}
+              disabled={!!searchJob}
             />
             <Input
               name="zipCode"
@@ -119,10 +118,11 @@ export default function SearchPage() {
               placeholder="080001"
               icon={<MapPinIcon className="form-input-icon" />}
               defaultValue={searchJob?.input.zipCode}
+              disabled={!!searchJob}
             />
           </div>
         </div>
-        <SubmitButton className="w-full" message="Submit" disabled={!!jobState} />
+        <SubmitButton className="w-full" message="Submit" disabled={!!searchJob} />
       </ValidatedForm>
       {jobState && (
         <div className="flex flex-col justify-center items-center gap-4 mx-auto my-12">
@@ -149,22 +149,23 @@ export default function SearchPage() {
           ))}
         </div>
       )}
+      {searchJob && (
+        <Link to="/" className="btn btn-accent btn-sm w-full !h-10" type="reset">
+          New search
+        </Link>
+      )}
       {[SearchJobState.Success, SearchJobState.Failure].includes(
         searchJob?.state as SearchJobState
       ) && (
-        <div className="flex flex-col justify-center items-end gap-4 mb-4">
-          <button className="link" onClick={() => setIsLogsVisible(!isLogsVisible)}>
-            {isLogsVisible ? 'Hide' : 'Show'} search logs
-          </button>
-          {isLogsVisible && (
-            <div className="flex flex-col items-start gap-2 w-full">
-              {(searchJob?.logs ?? []).map(log => (
-                <p key={log} className="text-sm text-gray-500">
-                  {log}
-                </p>
-              ))}
-            </div>
-          )}
+        <div className="flex flex-col justify-center gap-4 mb-4">
+          <h3 className="text-lg">Search logs</h3>
+          <div className="flex flex-col items-start gap-2 w-full">
+            {(searchJob?.logs ?? []).map(log => (
+              <p key={log} className="text-sm text-gray-500">
+                {log}
+              </p>
+            ))}
+          </div>
         </div>
       )}
     </div>
