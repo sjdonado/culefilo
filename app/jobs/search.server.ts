@@ -59,17 +59,20 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
   const stream = new ReadableStream({
     async start(controller) {
       const logs: string[] = [];
+      let progress = 0;
+
+      const sendEvent = (message: string, percentage: number) => {
+        const time = Date.now();
+
+        controller.enqueue(encodeMessage(message, percentage, time));
+        logs.push(`[${time}] ${message}`);
+      };
+
+      const increaseProgress = (increment: number) => (progress += increment);
 
       try {
-        const sendEvent = (message: string, percentage: number) => {
-          const time = Date.now();
-
-          controller.enqueue(encodeMessage(message, percentage, time));
-          logs.push(`[${time}] ${message}`);
-        };
-
         console.log(`[${startOrCheckSearchJob.name}] (${key}) started`);
-        sendEvent('Search started...', 0.1);
+        sendEvent('Search started...', progress);
 
         await putKVRecord(
           context,
@@ -85,14 +88,14 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
         const originalQuery = job.input.favoriteMealName;
         const coordinates = job.geoData.coordinates;
 
-        async function searchAndAppendToAllPlaces(
-          query: string,
-          percentage = 0.4 + (allPlaces.size / 3) * 0.1
-        ) {
+        async function searchAndAppendToAllPlaces(query: string, baseProgress = 0.01) {
           console.log(
             `[${startOrCheckSearchJob.name}] (${key}) places search - query ${query}`
           );
-          sendEvent(`Looking for nearby places with "${query}"...`, percentage);
+          sendEvent(
+            `Looking for nearby places with "${query}"...`,
+            increaseProgress(baseProgress)
+          );
 
           const places = await getPlacesByTextAndCoordinates(context, query, coordinates);
 
@@ -101,11 +104,11 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
           });
         }
 
-        await searchAndAppendToAllPlaces(originalQuery, 0.2);
+        await searchAndAppendToAllPlaces(originalQuery, 0.1);
 
         if (allPlaces.size < 3) {
           console.log(`[${startOrCheckSearchJob.name}] (${key}) LLM suggestions started`);
-          sendEvent('Looking for suggestions...', 0.4);
+          sendEvent('Looking for suggestions...', increaseProgress(0.2));
 
           const response = await runLLMRequest(
             context,
@@ -149,19 +152,28 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
         }
 
         if (allPlaces.size > 3) {
-          sendEvent('Almost done! Summarizing results...', 0.6);
+          sendEvent(
+            'Summarizing results...',
+            increaseProgress(progress < 0.4 ? 0.4 - progress : 0)
+          );
         }
 
         const topPlaces = Array.from(allPlaces.values()).slice(0, 3);
 
-        // TODO: refactor, separate descriptions genreation logic from parse place logic
-        // TODO: fix loading logic, set a global progress value
         const placesDescriptionsPromise = Promise.all(
-          topPlaces.map(async (place, idx) => {
+          topPlaces.map(async place => {
             const id = place.id;
+
+            sendEvent(
+              `Summarizing "${place.displayName.text}"...`,
+              increaseProgress(0.01)
+            );
+
             const reviews = (place.reviews ?? []).map(review => review.text.text);
 
-            sendEvent(`Summarizing "${name}"...`, 0.6 + (idx / 3) * 0.1);
+            if (!reviews.length) {
+              return;
+            }
 
             const description = await runSummarizationRequest(context, reviews);
 
@@ -173,7 +185,7 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
         );
 
         const placesThumbnailsPromise = Promise.all(
-          topPlaces.map(async (place, idx) => {
+          topPlaces.map(async place => {
             const photosWithCaptions = new Map<
               number,
               { image: string; caption: string }
@@ -181,13 +193,18 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
 
             sendEvent(
               `Fetching photos for "${place.displayName.text}"...`,
-              0.7 + (idx / 3) * 0.1
+              increaseProgress(progress < 0.6 ? 0.6 - progress : 0)
             );
 
             await Promise.all(
               (place.photos ?? []).slice(0, 5).map(async (photo, photoIdx) => {
                 const binary = await downloadPlacePhoto(context, photo.name);
                 const caption = await runImageToTextRequest(context, binary);
+
+                sendEvent(
+                  `Image #${photoIdx + 1} for "${place.displayName.text}" to text...`,
+                  increaseProgress(0.01)
+                );
 
                 photosWithCaptions.set(photoIdx, {
                   image: `data:image/jpeg;base64,${btoa(
@@ -198,19 +215,19 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
               })
             );
 
+            if (photosWithCaptions.size === 0) {
+              return;
+            }
+
             const captionsList = Array.from(photosWithCaptions.entries())
               .map(([idx, { caption }]) => {
                 return `${idx + 1}. ${caption}`;
               })
               .join('\n');
 
-            if (captionsList.length === 0) {
-              return;
-            }
-
             sendEvent(
               `Choosing thumbnail for "${place.displayName.text}"...`,
-              0.7 + (idx / 3) * 0.1
+              increaseProgress(0.05)
             );
 
             const response = await runLLMRequest(
@@ -219,19 +236,8 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
               context.cloudflare.env.AI_DEFAULT_INSTRUCTION
             );
 
-            console.log(
-              `[choosedCaption] ${JSON.stringify({ captionsList, response }, null, 2)}`
-            );
-
             const choosedCaption = parseInt(response.match(/\d+/)?.[0] ?? '1') - 1;
             const thumbnail = photosWithCaptions.get(choosedCaption)?.image;
-
-            console.log(
-              `[${startOrCheckSearchJob.name}] (${key}) thumbnail: ${{
-                id: place.id,
-                thumbnail,
-              }}`
-            );
 
             return {
               id: place.id,
@@ -244,6 +250,11 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
           placesDescriptionsPromise,
           placesThumbnailsPromise,
         ]);
+
+        sendEvent(
+          `Almost done! Parsing results...`,
+          increaseProgress(progress < 0.8 ? 0.8 - progress : 0)
+        );
 
         const places = topPlaces.map(place => {
           const id = place.id;
@@ -270,10 +281,9 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
           };
         });
 
-        sendEvent(
-          `Search completed successfully in ${(Date.now() - job.createdAt) / 1000}s`,
-          0.99
-        );
+        const duration = ((Date.now() - job.createdAt) / 1000).toFixed(1);
+
+        sendEvent(`Search completed successfully in ${duration}s`, 0.99);
 
         await putKVRecord(
           context,

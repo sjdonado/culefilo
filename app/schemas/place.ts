@@ -5,7 +5,7 @@ import { PriceLevel } from '~/services/places.server';
 export const PlaceSchema = z.object({
   id: z.string(),
   name: z.string(),
-  description: z.string(),
+  description: z.string().nullable(),
   address: z.string(),
   url: z.string(),
   thumbnail: z.string().nullable(),
