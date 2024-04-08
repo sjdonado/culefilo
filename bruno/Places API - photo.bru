@@ -1,0 +1,21 @@
+meta {
+  name: Places API - photo
+  type: http
+  seq: 5
+}
+
+get {
+  url: https://places.googleapis.com/v1/{{photoName}}/media?maxWidthPx=400
+  body: none
+  auth: none
+}
+
+query {
+  maxWidthPx: 400
+  ~key: {{PLACES_API_KEY}}
+}
+
+headers {
+  Referer: http://localhost:8787
+  X-Goog-Api-Key: {{PLACES_API_KEY}}
+}

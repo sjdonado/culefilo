@@ -55,9 +55,7 @@ export async function runSummarizationRequest(
   const ai = new Ai(context.cloudflare.env.AI);
 
   // it seems that this model does not accept intructions
-  // const input = `The restaurant named "${name}" can be described by its reviews : ${reviews.join(
-  //   '. '
-  // )}`;
+  // const input = `The restaurant named "${name}" can be described by its reviews : ${reviews.join( '. ')}`;
   const input = reviews.join('. ');
 
   const data = await ai.run('@cf/facebook/bart-large-cnn', {
