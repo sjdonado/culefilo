@@ -9,7 +9,7 @@ import type { LoaderFunctionArgs, ActionFunctionArgs } from '@remix-run/cloudfla
 import { RemixServer } from '@remix-run/react';
 import { isbot } from 'isbot';
 import { renderToReadableStream } from 'react-dom/server';
-import Bugsnag from '@bugsnag/js';
+import Bugsnag from '@bugsnag/web-worker';
 
 export default async function handleRequest(
   request: Request,
@@ -51,7 +51,7 @@ export function handleError(
   }: LoaderFunctionArgs | ActionFunctionArgs
 ) {
   if (!request.signal.aborted) {
-    if(context.cloudflare.env.ENVIRONMENT === 'production') {
+    if (context.cloudflare.env.ENVIRONMENT === 'production') {
       Bugsnag.start({ apiKey: context.cloudflare.env.BUGSNAG_API_KEY });
       Bugsnag.notify(error as Error);
       console.error(error);
