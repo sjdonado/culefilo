@@ -2,25 +2,28 @@ import { z } from 'zod';
 
 import { PriceLevel } from '~/services/places.server';
 
-export const PlaceSchema = z
-  .object({
-    name: z.string(),
-    description: z.string(),
-    address: z.string(),
-    url: z.string(),
-    rating: z.object({
-      number: z.number(),
-      count: z.number(),
-    }),
-    priceLevel: z.string().optional(),
-    isOpen: z.boolean().nullable(),
-  })
-  .transform(data => ({
-    ...data,
-    rating: `${data.rating.number} (${data.rating.count})`,
-    price: parsePlacePriceLevel(data.priceLevel ?? ''),
-    isOpen: data.isOpen ?? null,
-  }));
+export const PlaceSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  address: z.string(),
+  url: z.string(),
+  rating: z.string(),
+  price: z.string().nullable(),
+  isOpen: z.boolean().nullable(),
+});
+
+export const PlaceSerializedSchema = PlaceSchema.extend({
+  rating: z.object({
+    number: z.number(),
+    count: z.number(),
+  }),
+  priceLevel: z.string().optional(),
+}).transform(({ rating, priceLevel, ...data }) => ({
+  ...data,
+  rating: `${rating.number} (${rating.count})`,
+  price: parsePlacePriceLevel(priceLevel ?? ''),
+  isOpen: data.isOpen ?? null,
+}));
 
 export const PlaceGeoDataSchema = z.object({
   zipCode: z.string(),

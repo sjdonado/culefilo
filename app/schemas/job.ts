@@ -16,9 +16,9 @@ export const SearchJobSchema = z.object({
 export const SearchJobSerializedSchema = SearchJobSchema.pick({
   input: true,
   state: true,
-  places: true,
 }).extend({
   id: z.string(),
+  places: z.array(PlaceSchema),
 });
 
 export type SearchJob = z.infer<typeof SearchJobSchema>;
