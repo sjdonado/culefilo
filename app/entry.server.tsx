@@ -45,16 +45,21 @@ export default async function handleRequest(
 }
 
 export function handleError(
-  error: unknown,
+  error: Error,
   { request,
     context,
   }: LoaderFunctionArgs | ActionFunctionArgs
 ) {
+  if (!Bugsnag.isStarted()) {
+    Bugsnag.start({
+      apiKey: context.cloudflare.env.BUGSNAG_API_KEY,
+    });
+  }
+
   if (!request.signal.aborted) {
     if (context.cloudflare.env.ENVIRONMENT === 'production') {
-      Bugsnag.start({ apiKey: context.cloudflare.env.BUGSNAG_API_KEY });
       Bugsnag.notify(error as Error);
-      console.error(error);
+      console.error((error as Error).stack);
     }
   }
 }
