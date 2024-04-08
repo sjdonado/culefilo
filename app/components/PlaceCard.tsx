@@ -11,16 +11,16 @@ export default function PlaceCard({ place }: { place: Place }) {
           <div className="badge badge-ghost">
             <span className="text-xs font-bold">★{place.rating}</span>
           </div>
-          {place.price !== null && (
-            <div className="badge badge-ghost">
-              <span className="text-xs font-bold">{place.price}</span>
-            </div>
-          )}
           {place.isOpen !== null && (
             <div className="badge badge-ghost">
               <span className="text-xs font-bold">
                 {place.isOpen ? 'Open now' : 'Closed now'}
               </span>
+            </div>
+          )}
+          {place.price !== null && (
+            <div className="badge badge-ghost">
+              <span className="text-xs font-bold">{place.price}</span>
             </div>
           )}
         </div>
