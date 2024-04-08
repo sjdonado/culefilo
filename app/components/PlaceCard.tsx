@@ -8,8 +8,9 @@ export default function PlaceCard({ place }: { place: Place }) {
           {place.name}
         </a>
       </div>
+      <p>{place.description}</p>
       <div className="flex flex-wrap justify-end gap-4">
-        <p className="text-sm">{place.address}</p>
+        <p className="text-sm text-gray-500">{place.address}</p>
       </div>
     </div>
   );

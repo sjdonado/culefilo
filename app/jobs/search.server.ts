@@ -105,6 +105,9 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
           job.geoData.coordinates
         );
 
+        // TODO: remove this placeholder line - simulates the time it takes to get places with multiple requests
+        await new Promise(resolve => setTimeout(resolve, 3000));
+
         sendEvent('Almost done! processing results...');
 
         const placesWithDescriptions = await Promise.all(
@@ -114,7 +117,7 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
             const url = place.googleMapsUri;
             const reviews = place.reviews.map(review => review.text.text);
 
-            const description = await runSummarizationRequest(context, name, reviews);
+            const description = await runSummarizationRequest(context, reviews);
 
             return {
               name,
@@ -135,9 +138,6 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
             places: placesWithDescriptions,
           })
         );
-
-        // TODO: remove this placeholder line - simulates the time it takes to get places with multiple requests
-        await new Promise(resolve => setTimeout(resolve, 3000));
 
         console.log(`[${startOrCheckSearchJob.name}] (${key}) finished`);
 
