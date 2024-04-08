@@ -12,7 +12,7 @@ post {
 
 headers {
   X-Goog-Api-Key: {{PLACES_API_KEY}}
-  X-Goog-FieldMask: places.displayName,places.formattedAddress,places.googleMapsUri,places.location,places.rating,places.userRatingCount,places.priceLevel,places.currentOpeningHours,places.photos
+  X-Goog-FieldMask: places.displayName,places.formattedAddress,places.googleMapsUri,places.location,places.rating,places.userRatingCount,places.priceLevel,places.currentOpeningHours,places.photos,places.reviews
   Referer: http://localhost:8787
 }
 
@@ -32,6 +32,6 @@ body:json {
         }
       }
     },
-    "maxResultCount": 1
+    "maxResultCount": 3
   }
 }

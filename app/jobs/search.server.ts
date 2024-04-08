@@ -2,9 +2,14 @@ import { AppLoadContext } from '@remix-run/cloudflare';
 import { SearchJobState } from '~/constants/job';
 
 import { SearchJob, SearchJobSchema } from '~/schemas/job';
-import { PlaceGeoData } from '~/schemas/place';
+import { PlaceGeoData, PlaceSchema } from '~/schemas/place';
 
-import { getKVRecord, putKVRecord, runLLMRequest } from '~/services/cloudfare.server';
+import {
+  getKVRecord,
+  putKVRecord,
+  runLLMRequest,
+  runSummarizationRequest,
+} from '~/services/cloudfare.server';
 import { getPlacesByTextAndCoordinates } from '~/services/places.server';
 
 export async function createSearchJob(
@@ -31,15 +36,16 @@ export async function createSearchJob(
 export async function startOrCheckSearchJob(context: AppLoadContext, key: string) {
   const job = await getKVRecord<SearchJob>(context, key);
 
+  const encoder = new TextEncoder();
+
   // if job has been executed
   if (job.state !== SearchJobState.Created) {
     console.log(
       `[${startOrCheckSearchJob.name}] (${key}) is already running or finished`
     );
-    return 'Job started somewhere else, reload the page';
-  }
 
-  const encoder = new TextEncoder();
+    return encoder.encode('done');
+  }
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -91,12 +97,59 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
         );
 
         console.log(`[${startOrCheckSearchJob.name}] (${key}) places search started`);
-        sendEvent('Looking for places...');
+        sendEvent('Looking for nearby places...');
 
         const places = await getPlacesByTextAndCoordinates(
           context,
           job.input.favoriteMealName,
           job.geoData.coordinates
+        );
+
+        // TODO: remove this placeholder line - simulates the time it takes to get places with multiple requests
+        await new Promise(resolve => setTimeout(resolve, 3000));
+
+        sendEvent('Almost done! processing results...');
+
+        const placesWithDescriptions = await Promise.all(
+          (places ?? []).slice(0, 3).map(async place => {
+            const name = place.displayName.text;
+            const address = place.formattedAddress;
+            const url = place.googleMapsUri;
+
+            const rating = { number: place.rating, count: place.userRatingCount };
+            const priceLevel = place.priceLevel;
+            const isOpen = place.currentOpeningHours?.openNow;
+
+            const reviews = (place.reviews ?? []).map(review => review.text.text);
+
+            console.log(
+              `[${startOrCheckSearchJob.name}] place ${JSON.stringify(
+                {
+                  name,
+                  address,
+                  url,
+                  reviews,
+                  rating,
+                  priceLevel,
+                  isOpen,
+                },
+                null,
+                2
+              )}`
+            );
+
+            const description = await runSummarizationRequest(context, reviews);
+
+            return {
+              name,
+              description,
+              address,
+              url,
+              rating,
+              priceLevel,
+              isOpen,
+            };
+          })
         );
 
         await putKVRecord(
@@ -105,12 +158,9 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
           SearchJobSchema.parse({
             ...job,
             state: SearchJobState.Success,
-            places,
+            places: placesWithDescriptions,
           })
         );
-
-        // TODO: remove this placeholder line - simulates the time it takes to get places with multiple requests
-        await new Promise(resolve => setTimeout(resolve, 3000));
 
         console.log(`[${startOrCheckSearchJob.name}] (${key}) finished`);
 

@@ -74,6 +74,7 @@ export default function SearchPage() {
         if (decodedValue === 'done') {
           eventSource.close();
           revalidator.revalidate();
+          return;
         }
 
         setJobMessage(prev => [...prev, decodedValue]);

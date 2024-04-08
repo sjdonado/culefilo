@@ -1,4 +1,5 @@
 import { Ai } from '@cloudflare/ai';
+import { AiSummarizationOutput } from '@cloudflare/ai/dist/ai/tasks/summarization';
 import type { AiTextGenerationOutput } from '@cloudflare/ai/dist/ai/tasks/text-generation';
 
 import { AppLoadContext } from '@remix-run/cloudflare';
@@ -41,4 +42,33 @@ export async function runLLMRequest(
   })) as AiTextGenerationOutputWithResponse;
 
   return data.response!;
+}
+
+export async function runSummarizationRequest(
+  context: AppLoadContext,
+  reviews: string[]
+) {
+  // https://developers.cloudflare.com/workers-ai/configuration/bindings/
+  const ai = new Ai(context.cloudflare.env.AI);
+
+  // it seems that this model does not accept intructions
+  // const input = `The restaurant named "${name}" can be described by its reviews : ${reviews.join(
+  //   '. '
+  // )}`;
+  const input = reviews.join('. ');
+
+  const data = await ai.run('@cf/facebook/bart-large-cnn', {
+    input_text: input,
+    max_length: 3072, // the default is 1024
+  });
+
+  console.log(
+    `[${runSummarizationRequest.name}] ${JSON.stringify(
+      { input, output: data.summary },
+      null,
+      2
+    )}`
+  );
+
+  return data.summary;
 }
