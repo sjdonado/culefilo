@@ -1,7 +1,7 @@
 import { AppLoadContext } from '@remix-run/cloudflare';
 import { createRectangleFromCenter } from '~/utils/geo.server';
 
-type PlaceAPIResponse = {
+export type PlaceAPIResponse = {
   places: {
     formattedAddress: string;
     location: {

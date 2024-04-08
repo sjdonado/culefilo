@@ -124,7 +124,12 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
               description,
               address,
               url,
-              isOpen: place.currentOpeningHours?.openNow ?? null,
+              rating: {
+                number: place.rating,
+                count: place.userRatingCount,
+              },
+              priceLevel: place.priceLevel,
+              isOpen: place.currentOpeningHours?.openNow,
             };
           })
         );
