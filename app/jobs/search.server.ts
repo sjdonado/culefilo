@@ -107,14 +107,25 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
             context.cloudflare.env.AI_DEFAULT_INSTRUCTION
           );
 
-          const suggestions =
+          const suggestionsList =
             response.match(/"([^"]+)"/g)?.map(item => item.replace(/"/g, '')) ?? [];
+
+          // remove duplicates
+          const suggestions = Array.from(
+            new Set(
+              suggestionsList.map(s => s.toLowerCase()).filter(s => s !== originalQuery)
+            )
+          );
 
           if (suggestions.length === 0) {
             console.error(
               `[${startOrCheckSearchJob.name}] No suggestions found for ${originalQuery}: ${response}`
             );
           }
+
+          console.log(
+            `[${startOrCheckSearchJob.name}] (${key}) LLM suggestions: ${suggestions}`
+          );
 
           while (allPlaces.size < 3 && suggestions.length > 0) {
             const query = suggestions.shift();
@@ -125,45 +136,47 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
         sendEvent('Almost done! summarizing results...');
 
         const placesWithDescriptions = await Promise.all(
-          Array.from(allPlaces.values()).map(async place => {
-            const name = place.displayName.text;
-            const address = place.formattedAddress;
-            const url = place.googleMapsUri;
+          Array.from(allPlaces.values())
+            .slice(0, 3)
+            .map(async place => {
+              const name = place.displayName.text;
+              const address = place.formattedAddress;
+              const url = place.googleMapsUri;
 
-            const rating = { number: place.rating, count: place.userRatingCount };
-            const priceLevel = place.priceLevel;
-            const isOpen = place.currentOpeningHours?.openNow;
+              const rating = { number: place.rating, count: place.userRatingCount };
+              const priceLevel = place.priceLevel;
+              const isOpen = place.currentOpeningHours?.openNow;
 
-            const reviews = (place.reviews ?? []).map(review => review.text.text);
+              const reviews = (place.reviews ?? []).map(review => review.text.text);
 
-            console.log(
-              `[${startOrCheckSearchJob.name}] place ${JSON.stringify(
-                {
-                  name,
-                  address,
-                  url,
-                  reviews,
-                  rating,
-                  priceLevel,
-                  isOpen,
-                },
-                null,
-                2
-              )}`
-            );
+              console.log(
+                `[${startOrCheckSearchJob.name}] place ${JSON.stringify(
+                  {
+                    name,
+                    address,
+                    url,
+                    reviews,
+                    rating,
+                    priceLevel,
+                    isOpen,
+                  },
+                  null,
+                  2
+                )}`
+              );
 
-            const description = await runSummarizationRequest(context, reviews);
+              const description = await runSummarizationRequest(context, reviews);
 
-            return {
-              name,
-              description,
-              address,
-              url,
-              rating,
-              priceLevel,
-              isOpen,
-            };
-          })
+              return {
+                name,
+                description,
+                address,
+                url,
+                rating,
+                priceLevel,
+                isOpen,
+              };
+            })
         );
 
         await putKVRecord(

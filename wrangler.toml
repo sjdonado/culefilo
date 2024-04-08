@@ -8,7 +8,7 @@ compatibility_date = "2024-04-05"
 ENVIRONMENT = "dev"
 PLACES_API_URL = "https://places.googleapis.com/v1/places:searchText"
 OPENDATASOFT_API_URL = "https://data.opendatasoft.com/api/explore/v2.1/catalog/datasets/geonames-postal-code@public/records"
-AI_DEFAULT_INSTRUCTION = "You are an assistant that returns concise and short responses."
+AI_DEFAULT_INSTRUCTION = "You are an assistant that returns concise responses."
 
 [env.production]
 vars = { ENVIRONMENT = "production" }
