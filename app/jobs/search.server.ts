@@ -154,6 +154,8 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
 
         const topPlaces = Array.from(allPlaces.values()).slice(0, 3);
 
+        // TODO: refactor, separate descriptions genreation logic from parse place logic
+        // TODO: fix loading logic, set a global progress value
         const placesWithDescriptionsPromise = Promise.all(
           topPlaces.map(async (place, idx) => {
             const id = place.id;
@@ -213,7 +215,7 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
             );
 
             await Promise.all(
-              (place.photos.slice(0, 5) ?? []).map(async (photo, photoIdx) => {
+              (place.photos ?? []).slice(0, 5).map(async (photo, photoIdx) => {
                 const binary = await downloadPlacePhoto(context, photo.name);
                 const caption = await runImageToTextRequest(context, binary);
 
@@ -283,7 +285,10 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
           };
         });
 
-        sendEvent(`Search completed successfully`, 0.99);
+        sendEvent(
+          `Search completed successfully in ${(Date.now() - job.createdAt) / 1000}s`,
+          0.99
+        );
 
         await putKVRecord(
           context,
