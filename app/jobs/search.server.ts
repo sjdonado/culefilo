@@ -243,7 +243,7 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
 
             const response = await runLLMRequest(
               context,
-              `Which of these captions best describes "${place.displayName.text}"? '${captionsList}' (return the number of the best caption)`,
+              `Which of these captions best describes "${place.displayName.text}"? '${captionsList}' (only return the number of the best caption, no explanation)`,
               context.cloudflare.env.AI_DEFAULT_INSTRUCTION
             );
 

@@ -17,7 +17,7 @@ export async function getKVRecord<T>(context: AppLoadContext, key: string) {
 }
 
 export async function getAllKVRecords<T>(context: AppLoadContext) {
-  const data = await context.cloudflare.env.CULEFILO_KV.list({ limit: 10 });
+  const data = await context.cloudflare.env.CULEFILO_KV.list();
 
   return Promise.all(
     data.keys.map(async ({ name }) => {

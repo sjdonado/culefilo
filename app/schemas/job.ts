@@ -14,7 +14,7 @@ export const SearchJobSchema = z.object({
   createdAt: z.number(),
 });
 
-export const SearchJobSerializedSchema = SearchJobSchema.pick({
+export const SearchJobParsedSchema = SearchJobSchema.pick({
   input: true,
   state: true,
   createdAt: true,
@@ -29,4 +29,4 @@ export const SearchJobSerializedSchema = SearchJobSchema.pick({
   }));
 
 export type SearchJob = z.infer<typeof SearchJobSchema>;
-export type SearchJobSerialized = z.infer<typeof SearchJobSerializedSchema>;
+export type SearchJobParsed = z.infer<typeof SearchJobParsedSchema>;
