@@ -7,11 +7,13 @@ import { PlaceGeoData } from '~/schemas/place';
 import {
   getKVRecord,
   putKVRecord,
+  runImageToTextRequest,
   runLLMRequest,
   runSummarizationRequest,
 } from '~/services/cloudfare.server';
 import {
   PlaceAPIResponse,
+  downloadPlacePhoto,
   getPlacesByTextAndCoordinates,
 } from '~/services/places.server';
 
@@ -146,57 +148,140 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
           }
         }
 
-        sendEvent('Almost done! Summarizing results...', 0.6);
+        if (allPlaces.size > 3) {
+          sendEvent('Almost done! Summarizing results...', 0.6);
+        }
 
-        const placesWithDescriptions = await Promise.all(
-          Array.from(allPlaces.values())
-            .slice(0, 3)
-            .map(async (place, idx) => {
-              const name = place.displayName.text;
-              const address = place.formattedAddress;
-              const url = place.googleMapsUri;
+        const topPlaces = Array.from(allPlaces.values()).slice(0, 3);
 
-              const rating = { number: place.rating, count: place.userRatingCount };
-              const priceLevel = place.priceLevel;
-              const isOpen = place.currentOpeningHours?.openNow;
+        const placesWithDescriptionsPromise = Promise.all(
+          topPlaces.map(async (place, idx) => {
+            const id = place.id;
+            const name = place.displayName.text;
+            const address = place.formattedAddress;
+            const url = place.googleMapsUri;
 
-              const reviews = (place.reviews ?? []).map(review => review.text.text);
+            const rating = { number: place.rating, count: place.userRatingCount };
+            const priceLevel = place.priceLevel;
+            const isOpen = place.currentOpeningHours?.openNow;
 
-              console.log(
-                `[${startOrCheckSearchJob.name}] place ${JSON.stringify(
-                  {
-                    name,
-                    address,
-                    url,
-                    reviews,
-                    rating,
-                    priceLevel,
-                    isOpen,
-                  },
-                  null,
-                  2
-                )}`
-              );
+            const reviews = (place.reviews ?? []).map(review => review.text.text);
 
-              sendEvent(`Summarizing "${name}"...`, 0.6 + (idx / 3) * 0.1);
+            console.log(
+              `[${startOrCheckSearchJob.name}] place ${JSON.stringify(
+                {
+                  name,
+                  address,
+                  url,
+                  reviews,
+                  rating,
+                  priceLevel,
+                  isOpen,
+                },
+                null,
+                2
+              )}`
+            );
 
-              const description = await runSummarizationRequest(context, reviews);
+            sendEvent(`Summarizing "${name}"...`, 0.6 + (idx / 3) * 0.1);
 
-              return {
-                name,
-                description,
-                address,
-                url,
-                rating,
-                priceLevel,
-                isOpen,
-              };
-            })
+            const description = await runSummarizationRequest(context, reviews);
+
+            return {
+              id,
+              name,
+              description,
+              address,
+              url,
+              rating,
+              priceLevel,
+              isOpen,
+            };
+          })
         );
 
-        sendEvent(`Choosing the best thumbnails...`, 0.8);
-        // TODO: remove temp placeholder after implementing #18
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        const placesThumbnailsPromise = Promise.all(
+          topPlaces.map(async (place, idx) => {
+            const photosWithCaptions = new Map<
+              number,
+              { image: string; caption: string }
+            >();
+
+            sendEvent(
+              `Fetching photos for "${place.displayName.text}"...`,
+              0.7 + (idx / 3) * 0.1
+            );
+
+            await Promise.all(
+              (place.photos.slice(0, 5) ?? []).map(async (photo, photoIdx) => {
+                const binary = await downloadPlacePhoto(context, photo.name);
+                const caption = await runImageToTextRequest(context, binary);
+
+                photosWithCaptions.set(photoIdx, {
+                  image: `data:image/jpeg;base64,${btoa(
+                    String.fromCharCode.apply(null, binary)
+                  )}`,
+                  caption,
+                });
+              })
+            );
+
+            const captionsList = Array.from(photosWithCaptions.entries())
+              .map(([idx, { caption }]) => {
+                return `${idx + 1}. ${caption}`;
+              })
+              .join('\n');
+
+            if (captionsList.length === 0) {
+              return;
+            }
+
+            sendEvent(
+              `Choosing thumbnail for "${place.displayName.text}"...`,
+              0.7 + (idx / 3) * 0.1
+            );
+
+            const response = await runLLMRequest(
+              context,
+              `Which of these captions best describes "${place.displayName.text}"? '${captionsList}' (return the number of the best caption)`,
+              context.cloudflare.env.AI_DEFAULT_INSTRUCTION
+            );
+
+            console.log(
+              `[choosedCaption] ${JSON.stringify({ captionsList, response }, null, 2)}`
+            );
+
+            const choosedCaption = parseInt(response.match(/\d+/)?.[0] ?? '1') - 1;
+            const thumbnail = photosWithCaptions.get(choosedCaption)?.image;
+
+            console.log(
+              `[${startOrCheckSearchJob.name}] (${key}) thumbnail: ${{
+                id: place.id,
+                thumbnail,
+              }}`
+            );
+
+            return {
+              id: place.id,
+              thumbnail,
+            };
+          })
+        );
+
+        const [placesWithDescriptions, placesThumbnails] = await Promise.all([
+          placesWithDescriptionsPromise,
+          placesThumbnailsPromise,
+        ]);
+
+        const places = placesWithDescriptions.map(place => {
+          const thumbnail =
+            placesThumbnails.find(p => p?.id === place.id)?.thumbnail ?? null;
+
+          return {
+            ...place,
+            thumbnail,
+          };
+        });
 
         sendEvent(`Search completed successfully`, 0.99);
 
@@ -206,7 +291,7 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
           SearchJobSchema.parse({
             ...job,
             state: SearchJobState.Success,
-            places: placesWithDescriptions,
+            places,
             logs,
           })
         );

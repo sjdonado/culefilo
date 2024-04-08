@@ -86,3 +86,14 @@ export async function runSummarizationRequest(
 
   return data.summary;
 }
+
+export async function runImageToTextRequest(context: AppLoadContext, image: number[]) {
+  // https://developers.cloudflare.com/workers-ai/configuration/bindings/
+  const ai = new Ai(context.cloudflare.env.AI);
+
+  const data = await ai.run('@cf/unum/uform-gen2-qwen-500m', {
+    image,
+  });
+
+  return data.description;
+}
