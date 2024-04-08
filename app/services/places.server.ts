@@ -77,21 +77,12 @@ export async function getPlacesByTextAndCoordinates(
     },
   };
 
-  const apiKey = context.cloudflare.env.PLACES_API_KEY;
-  const host = context.cloudflare.request?.headers.get('host')!;
-
-  if (!apiKey || !host) {
-    throw new Error(
-      `[${getPlacesByTextAndCoordinates.name}] No API key or host found. ${apiKey?.length} ${host?.length}`
-    );
-  }
-
   const response = await fetch(context.cloudflare.env.PLACES_API_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Referer: host,
-      'X-Goog-Api-Key': apiKey,
+      Referer: context.cloudflare.request?.headers.get('host')!,
+      'X-Goog-Api-Key': context.cloudflare.env.PLACES_API_KEY,
       'X-Goog-FieldMask':
         'places.id,places.displayName,places.formattedAddress,places.googleMapsUri,places.location,places.rating,places.userRatingCount,places.priceLevel,places.currentOpeningHours,places.reviews,places.photos',
     },
@@ -115,4 +106,26 @@ export async function getPlacesByTextAndCoordinates(
   );
 
   return data.places;
+}
+
+export async function downloadPlacePhoto(
+  context: AppLoadContext & { cloudflare: { request?: Request } },
+  photoName: string
+) {
+  const response = await fetch(
+    `https://places.googleapis.com/v1/${photoName}/media?maxWidthPx=200`,
+    {
+      headers: {
+        Referer: context.cloudflare.request?.headers.get('host')!,
+        'X-Goog-Api-Key': context.cloudflare.env.PLACES_API_KEY,
+      },
+    }
+  );
+
+  const arrayBuffer = await response.arrayBuffer();
+
+  const uint8Array = new Uint8Array(arrayBuffer);
+  const binary = Array.from(uint8Array);
+
+  return binary;
 }
