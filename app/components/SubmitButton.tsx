@@ -1,12 +1,15 @@
+import clsx from 'clsx';
 import { useIsValid } from 'remix-validated-form';
 
 import { useNavigation } from '@remix-run/react';
 
 export default function SubmitButton({
   message,
+  className,
   disabled,
 }: {
   message: string;
+  className?: string;
   disabled?: boolean;
 }) {
   const isValid = useIsValid();
@@ -14,7 +17,10 @@ export default function SubmitButton({
 
   return (
     <button
-      className="btn btn-primary btn-sm !h-10 w-[90px] rounded-lg font-normal text-base-100"
+      className={clsx(
+        'btn btn-primary btn-sm !h-10 w-[90px] rounded-lg font-normal text-base-100',
+        className
+      )}
       type="submit"
       disabled={navigation.state !== 'idle' || !isValid || disabled}
     >

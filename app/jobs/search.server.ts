@@ -41,8 +41,8 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
 
   const encoder = new TextEncoder();
 
-  const encodeMessage = (message: string, percentage: number) =>
-    encoder.encode(`data: ${Date.now()},${(percentage * 100).toFixed(1)},${message}\n\n`);
+  const encodeMessage = (message: string, percentage: number, time = Date.now()) =>
+    encoder.encode(`data: ${time},${(percentage * 100).toFixed(1)},${message}\n\n`);
 
   // if job has been executed
   if (job.state !== SearchJobState.Created) {
@@ -56,8 +56,13 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
   const stream = new ReadableStream({
     async start(controller) {
       try {
+        const logs: string[] = [];
+
         const sendEvent = (message: string, percentage: number) => {
-          controller.enqueue(encodeMessage(message, percentage));
+          const time = Date.now();
+
+          controller.enqueue(encodeMessage(message, percentage, time));
+          logs.push(`[${time}] ${message}`);
         };
 
         console.log(`[${startOrCheckSearchJob.name}] (${key}) started`);
@@ -73,15 +78,6 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
         );
 
         const allPlaces = new Map<string, PlaceAPIResponse['places'][0]>();
-
-        await putKVRecord(
-          context,
-          key,
-          SearchJobSchema.parse({
-            ...job,
-            suggestions: [],
-          })
-        );
 
         const originalQuery = job.input.favoriteMealName;
         const coordinates = job.geoData.coordinates;
@@ -124,6 +120,15 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
             )
           );
 
+          await putKVRecord(
+            context,
+            key,
+            SearchJobSchema.parse({
+              ...job,
+              suggestions,
+            })
+          );
+
           if (suggestions.length === 0) {
             console.error(
               `[${startOrCheckSearchJob.name}] No suggestions found for ${originalQuery}: ${response}`
@@ -140,7 +145,7 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
           }
         }
 
-        sendEvent('Almost done! summarizing results...', 0.6);
+        sendEvent('Almost done! Summarizing results...', 0.6);
 
         const placesWithDescriptions = await Promise.all(
           Array.from(allPlaces.values())
@@ -199,8 +204,11 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
             ...job,
             state: SearchJobState.Success,
             places: placesWithDescriptions,
+            logs,
           })
         );
+
+        sendEvent(`Search completed successfully`, 0.99);
 
         console.log(`[${startOrCheckSearchJob.name}] (${key}) finished`);
 

@@ -65,6 +65,8 @@ export default function SearchPage() {
     { time: string; percentage: string; message: string } | undefined
   >();
 
+  const [isLogsVisible, setIsLogsVisible] = useState(false);
+
   const startSearchJob = useCallback(async () => {
     if (searchJob?.state === SearchJobState.Created) {
       const eventSource = new EventSource(`/search/job/${jobId}`);
@@ -120,9 +122,7 @@ export default function SearchPage() {
             />
           </div>
         </div>
-        <div className="flex justify-end gap-4">
-          <SubmitButton message="Submit" disabled={!!searchJob} />
-        </div>
+        <SubmitButton className="w-full" message="Submit" disabled={!!searchJob} />
       </ValidatedForm>
       {jobState && (
         <div className="flex flex-col justify-center items-center gap-4 mx-auto my-12">
@@ -144,6 +144,24 @@ export default function SearchPage() {
           {(searchJob?.places ?? []).map(place => (
             <PlaceCard key={place.name} place={place} />
           ))}
+        </div>
+      )}
+      {[SearchJobState.Success, SearchJobState.Failure].includes(
+        searchJob?.state as SearchJobState
+      ) && (
+        <div className="flex flex-col justify-center items-end gap-4 mb-4">
+          <button className="link" onClick={() => setIsLogsVisible(!isLogsVisible)}>
+            See search logs
+          </button>
+          {isLogsVisible && (
+            <div className="flex flex-col items-start gap-4 w-full">
+              {(searchJob?.logs ?? []).map(log => (
+                <p key={log} className="text-sm text-gray-500">
+                  {log}
+                </p>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
