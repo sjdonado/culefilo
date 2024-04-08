@@ -55,9 +55,9 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
 
   const stream = new ReadableStream({
     async start(controller) {
-      try {
-        const logs: string[] = [];
+      const logs: string[] = [];
 
+      try {
         const sendEvent = (message: string, percentage: number) => {
           const time = Date.now();
 
@@ -197,6 +197,8 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
         // TODO: remove temp placeholder after implementing #18
         await new Promise(resolve => setTimeout(resolve, 3000));
 
+        sendEvent(`Search completed successfully`, 0.99);
+
         await putKVRecord(
           context,
           key,
@@ -208,17 +210,15 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
           })
         );
 
-        sendEvent(`Search completed successfully`, 0.99);
-
-        console.log(`[${startOrCheckSearchJob.name}] (${key}) finished`);
-
         sendEvent(DONE_JOB_MESSAGE, 1);
+        console.log(`[${startOrCheckSearchJob.name}] (${key}) finished`);
       } catch (error) {
         console.error(`[${startOrCheckSearchJob.name}] Job ${key} failed`, error);
 
         await putKVRecord(context, key, {
           ...job,
           state: SearchJobState.Failure,
+          logs,
         });
 
         throw error;
