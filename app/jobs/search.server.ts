@@ -36,15 +36,16 @@ export async function createSearchJob(
 export async function startOrCheckSearchJob(context: AppLoadContext, key: string) {
   const job = await getKVRecord<SearchJob>(context, key);
 
+  const encoder = new TextEncoder();
+
   // if job has been executed
   if (job.state !== SearchJobState.Created) {
     console.log(
       `[${startOrCheckSearchJob.name}] (${key}) is already running or finished`
     );
-    return 'Job started somewhere else, reload the page';
-  }
 
-  const encoder = new TextEncoder();
+    return encoder.encode('done');
+  }
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -106,8 +107,8 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
 
         sendEvent('Almost done! processing results...');
 
-        const placesWithDescriptions = Promise.all(
-          places.slice(0, 3).map(async place => {
+        const placesWithDescriptions = await Promise.all(
+          (places ?? []).slice(0, 3).map(async place => {
             const name = place.displayName.text;
             const address = place.formattedAddress;
             const url = place.googleMapsUri;

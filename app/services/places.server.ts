@@ -85,7 +85,7 @@ export async function getPlacesByTextAndCoordinates(
       Referer: host,
       'X-Goog-Api-Key': context.cloudflare.env.PLACES_API_KEY,
       'X-Goog-FieldMask':
-        'places.displayName,places.formattedAddress,places.googleMapsUri,places.location,places.rating,places.userRatingCount,places.priceLevel,places.currentOpeningHours,places.photos',
+        'places.displayName,places.formattedAddress,places.googleMapsUri,places.location,places.rating,places.userRatingCount,places.priceLevel,places.currentOpeningHours,places.reviews,places.photos',
     },
     body: JSON.stringify(payload),
   });
