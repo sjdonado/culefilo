@@ -1,11 +1,13 @@
 import clsx from 'clsx';
 
-import { NavLink } from '@remix-run/react';
+import { NavLink, useSearchParams } from '@remix-run/react';
 
 export default function Tabs() {
+  const [searchParams] = useSearchParams();
+
   const Tab = ({ to, children }: { to: string; children: React.ReactNode }) => (
     <NavLink
-      to={to}
+      to={`${to}?${searchParams.toString()}`}
       role="tab"
       className={({ isActive, isPending }) =>
         clsx('tab', {

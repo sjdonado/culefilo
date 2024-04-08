@@ -29,7 +29,7 @@ export const loader = async ({ context }: LoaderFunctionArgs) => {
 
   const sortedSearches = searches
     .filter(Boolean) // TEMPFIX: didn't find a way to purge the KV local cache
-    .sort((a, b) => b!.createdAt - a!.createdAt);
+    .sort((a, b) => new Date(b!.createdAt).getTime() - new Date(a!.createdAt).getTime());
 
   return {
     searches: sortedSearches,
