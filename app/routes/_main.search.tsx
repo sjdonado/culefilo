@@ -7,7 +7,7 @@ import { withZod } from '@remix-validated-form/with-zod';
 import type { LoaderFunctionArgs, ActionFunctionArgs } from '@remix-run/cloudflare';
 import { redirect, useLoaderData, useRevalidator } from '@remix-run/react';
 
-import { SearchJobState } from '~/constants/job';
+import { DONE_JOB_MESSAGE, SearchJobState } from '~/constants/job';
 
 import { SearchSchema } from '~/schemas/search';
 import { SearchJob } from '~/schemas/job';
@@ -68,16 +68,16 @@ export default function SearchPage() {
       const eventSource = new EventSource(`/search/job/${jobId}`);
 
       eventSource.onmessage = event => {
-        const decodedValue = event.data;
-        console.log(decodedValue);
+        const [time, percentage, message] = event.data.split(',');
+        console.log({ time, percentage, message });
 
-        if (decodedValue === 'done') {
+        if (message === DONE_JOB_MESSAGE) {
           eventSource.close();
           revalidator.revalidate();
           return;
         }
 
-        setJobMessage(prev => [...prev, decodedValue]);
+        setJobMessage(message);
       };
 
       return () => {
