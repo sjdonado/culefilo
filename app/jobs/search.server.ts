@@ -109,7 +109,7 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
 
           const response = await runLLMRequest(
             context,
-            `Other names for this meal: "${originalQuery}" (return each name in quotes, no explanation)`,
+            `Other names for this meal: "${originalQuery}" (return each name in quotes, omit explanations)`,
             context.cloudflare.env.AI_DEFAULT_INSTRUCTION
           );
 
@@ -156,34 +156,10 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
 
         // TODO: refactor, separate descriptions genreation logic from parse place logic
         // TODO: fix loading logic, set a global progress value
-        const placesWithDescriptionsPromise = Promise.all(
+        const placesDescriptionsPromise = Promise.all(
           topPlaces.map(async (place, idx) => {
             const id = place.id;
-            const name = place.displayName.text;
-            const address = place.formattedAddress;
-            const url = place.googleMapsUri;
-
-            const rating = { number: place.rating, count: place.userRatingCount };
-            const priceLevel = place.priceLevel;
-            const isOpen = place.currentOpeningHours?.openNow;
-
             const reviews = (place.reviews ?? []).map(review => review.text.text);
-
-            console.log(
-              `[${startOrCheckSearchJob.name}] place ${JSON.stringify(
-                {
-                  name,
-                  address,
-                  url,
-                  reviews,
-                  rating,
-                  priceLevel,
-                  isOpen,
-                },
-                null,
-                2
-              )}`
-            );
 
             sendEvent(`Summarizing "${name}"...`, 0.6 + (idx / 3) * 0.1);
 
@@ -191,13 +167,7 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
 
             return {
               id,
-              name,
               description,
-              address,
-              url,
-              rating,
-              priceLevel,
-              isOpen,
             };
           })
         );
@@ -245,7 +215,7 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
 
             const response = await runLLMRequest(
               context,
-              `Which of these captions best describes "${place.displayName.text}"? '${captionsList}' (only return the number of the best caption, no explanation)`,
+              `Which of these captions best describes "${place.displayName.text}"? '${captionsList}' (only return the number of the best caption, omit explanations)`,
               context.cloudflare.env.AI_DEFAULT_INSTRUCTION
             );
 
@@ -270,18 +240,33 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
           })
         );
 
-        const [placesWithDescriptions, placesThumbnails] = await Promise.all([
-          placesWithDescriptionsPromise,
+        const [placesDescriptions, placesThumbnails] = await Promise.all([
+          placesDescriptionsPromise,
           placesThumbnailsPromise,
         ]);
 
-        const places = placesWithDescriptions.map(place => {
-          const thumbnail =
-            placesThumbnails.find(p => p?.id === place.id)?.thumbnail ?? null;
+        const places = topPlaces.map(place => {
+          const id = place.id;
+          const name = place.displayName.text;
+          const address = place.formattedAddress;
+          const url = place.googleMapsUri;
+          const isOpen = place.currentOpeningHours?.openNow;
+
+          const description =
+            placesDescriptions.find(p => p?.id === id)?.description ?? null;
+
+          const thumbnail = placesThumbnails.find(p => p?.id === id)?.thumbnail ?? null;
 
           return {
-            ...place,
+            id,
+            name,
+            description,
+            address,
+            url,
             thumbnail,
+            rating: { number: place.rating, count: place.userRatingCount },
+            price: place.priceLevel,
+            isOpen,
           };
         });
 
