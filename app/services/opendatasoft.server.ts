@@ -1,4 +1,4 @@
-import { AppLoadContext } from '@remix-run/cloudflare';
+import type { AppLoadContext } from '@remix-run/cloudflare';
 
 import { PlaceGeoDataSchema } from '~/schemas/place';
 

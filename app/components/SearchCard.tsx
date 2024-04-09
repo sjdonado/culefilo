@@ -1,9 +1,9 @@
 import { Link } from '@remix-run/react';
-import { SearchJobParsed } from '~/schemas/job';
+import type { SearchJobParsed } from '~/schemas/job';
 
 export default function SearchCard({ search }: { search: SearchJobParsed }) {
   return (
-    <div className="border-base-custom flex flex-col gap-2 rounded-lg border p-4">
+    <div className="flex flex-col gap-2 rounded-lg border p-4">
       <div className="mb-1 flex flex-wrap justify-between gap-4">
         <Link to={`/search?id=${search.id}`} className="link">
           {search.input.favoriteMealName} - {search.input.zipCode}

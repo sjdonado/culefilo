@@ -1,8 +1,9 @@
-import { AppLoadContext } from '@remix-run/cloudflare';
+import type { AppLoadContext } from '@remix-run/cloudflare';
 import { DONE_JOB_MESSAGE, SearchJobState } from '~/constants/job';
 
-import { SearchJob, SearchJobParsedSchema } from '~/schemas/job';
-import { PlaceGeoData } from '~/schemas/place';
+import type { SearchJob} from '~/schemas/job';
+import { SearchJobParsedSchema } from '~/schemas/job';
+import type { PlaceGeoData } from '~/schemas/place';
 
 import {
   getKVRecord,
@@ -12,8 +13,9 @@ import {
   runSummarizationRequest,
 } from '~/services/cloudflare.server';
 
+import type {
+  PlaceAPIResponse} from '~/services/places.server';
 import {
-  PlaceAPIResponse,
   downloadPlacePhoto,
   getPlacesByTextAndCoordinates,
 } from '~/services/places.server';

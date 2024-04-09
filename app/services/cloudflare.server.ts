@@ -1,6 +1,6 @@
 import { Ai } from '@cloudflare/ai';
 
-import { AppLoadContext } from '@remix-run/cloudflare';
+import type { AppLoadContext } from '@remix-run/cloudflare';
 
 export async function putKVRecord<T>(context: AppLoadContext, key: string, value: T) {
   return context.cloudflare.env.CULEFILO_KV.put(key, JSON.stringify(value));

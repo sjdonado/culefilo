@@ -10,7 +10,7 @@ export default function PlaceCard({ place }: { place: Place }) {
           </div>
         </div>
       )}
-      <div className="flex-1 flex flex-col gap-2">
+      <div className="flex flex-1 flex-col gap-2">
         <div className="mb-1 flex flex-wrap items-center gap-4">
           <a href={place.url} className="link flex-1" target="_blank" rel="noreferrer">
             {place.name}

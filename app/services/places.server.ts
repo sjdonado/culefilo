@@ -116,7 +116,7 @@ export async function downloadPlacePhoto(
     `https://places.googleapis.com/v1/${photoName}/media?maxWidthPx=200`,
     {
       headers: {
-        Referer: context.cloudflare.request?.headers.get('host')!,
+        Referer: context.cloudflare.request?.headers.get('host') ?? 'localhost',
         'X-Goog-Api-Key': context.cloudflare.env.PLACES_API_KEY,
       },
     }

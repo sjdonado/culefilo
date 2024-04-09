@@ -22,7 +22,7 @@ export default function Input({ name, label, icon, className, ...rest }: InputPr
         <div className="relative">
           <input
             className={clsx(
-              'peer input input-bordered input-sm !h-10 w-full rounded-md !pl-9',
+              'peer input input-sm input-bordered !h-10 w-full rounded-md !pl-9',
               error && 'input-error'
             )}
             {...rest}
