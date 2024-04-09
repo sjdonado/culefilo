@@ -1,4 +1,5 @@
-import { CSSProperties, useCallback, useEffect, useState, useRef } from 'react';
+import type { CSSProperties } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { MagnifyingGlassIcon, MapPinIcon } from '@heroicons/react/24/outline';
 
 import { ValidatedForm, validationError, useControlField } from 'remix-validated-form';
@@ -12,7 +13,7 @@ import { Loader as GoogleMapsApiLoader } from "@googlemaps/js-api-loader"
 import { DONE_JOB_MESSAGE, SearchJobState } from '~/constants/job';
 
 import { SearchSchema } from '~/schemas/search';
-import { SearchJob } from '~/schemas/job';
+import type { SearchJobSerialized } from '~/schemas/job';
 
 import { createSearchJob } from '~/jobs/search.server';
 
@@ -48,7 +49,7 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
   const url = new URL(request.url);
   const jobId = url.searchParams.get('id');
 
-  const searchJob = jobId ? await getKVRecord<SearchJob>(context, jobId) : null;
+  const searchJob = jobId ? await getKVRecord<SearchJobSerialized>(context, jobId) : null;
   const placesApiKey = context.cloudflare.env.PLACES_API_KEY;
 
   return { jobId, searchJob, placesApiKey };
@@ -83,7 +84,6 @@ export default function SearchPage() {
 
       eventSource.onmessage = event => {
         const [time, percentage, message] = event.data.split(',');
-        console.log({ time, percentage, message });
 
         if (message === DONE_JOB_MESSAGE) {
           eventSource.close();
@@ -100,7 +100,7 @@ export default function SearchPage() {
         eventSource.close();
       };
     }
-  }, [jobId, searchJob]);
+  }, [jobId, searchJob, revalidator]);
 
   useEffect(() => {
     startSearchJob();
@@ -184,7 +184,7 @@ export default function SearchPage() {
   return (
     <div className="flex flex-col gap-6">
       <ValidatedForm id="searchForm" validator={validator} method="post" className="flex flex-col gap-6">
-        <div className="border-base-custom rounded-lg border bg-base-200/30 p-4 md:p-6">
+        <div className="rounded-lg border bg-base-200/30 p-4 md:p-6">
           <div className="flex gap-4">
             <Input
               className="flex-1"
@@ -229,7 +229,7 @@ export default function SearchPage() {
         />
       </ValidatedForm>
       {jobState && (
-        <div className="flex flex-col justify-center items-center gap-4 mx-auto my-12">
+        <div className="mx-auto my-12 flex flex-col items-center justify-center gap-4">
           <div
             className="radial-progress"
             style={{ '--value': jobState.percentage } as CSSProperties}
@@ -246,7 +246,7 @@ export default function SearchPage() {
       {searchJob?.state === SearchJobState.Success && (
         <div className="flex flex-col gap-4">
           {(searchJob?.places ?? []).length === 0 && (
-            <p className="text-center my-12">No results found :(</p>
+            <p className="my-12 text-center">No results found :(</p>
           )}
           {(searchJob?.places ?? []).map(place => (
             <PlaceCard key={place.name} place={place} />
@@ -256,16 +256,16 @@ export default function SearchPage() {
       {[SearchJobState.Success, SearchJobState.Failure].includes(
         searchJob?.state as SearchJobState
       ) && (
-        <Link to="/" className="btn btn-accent btn-sm w-full !h-10" type="reset">
-          New search
+        <Link to="/" className="btn btn-primary btn-sm !h-10 w-full text-base-100">
+          Go to new search
         </Link>
       )}
       {[SearchJobState.Success, SearchJobState.Failure].includes(
         searchJob?.state as SearchJobState
       ) && (
-        <div className="flex flex-col justify-center gap-4 mb-4">
+        <div className="mb-4 flex flex-col justify-center gap-4">
           <h3 className="text-lg">Search logs</h3>
-          <div className="flex flex-col items-start gap-2 w-full">
+          <div className="flex w-full flex-col items-start gap-2">
             {(searchJob?.logs ?? []).map(log => (
               <p key={log} className="text-sm text-gray-500">
                 {log}

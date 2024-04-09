@@ -18,7 +18,7 @@ export default function SubmitButton({
   return (
     <button
       className={clsx(
-        'btn btn-primary btn-sm !h-10 w-[90px] rounded-lg font-normal text-base-100',
+        'btn btn-primary btn-sm !h-10 w-[90px] rounded-lg text-base-100',
         className
       )}
       type="submit"

@@ -1,4 +1,4 @@
-import { AppLoadContext } from '@remix-run/cloudflare';
+import type { AppLoadContext } from '@remix-run/cloudflare';
 import { createRectangleFromCenter } from '~/utils/geo.server';
 
 export enum PriceLevel {
@@ -81,7 +81,7 @@ export async function getPlacesByTextAndCoordinates(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Referer: context.cloudflare.request?.headers.get('host')!,
+      Referer: context.cloudflare.request?.headers.get('host') ?? 'localhost',
       'X-Goog-Api-Key': context.cloudflare.env.PLACES_API_KEY,
       'X-Goog-FieldMask':
         'places.id,places.displayName,places.formattedAddress,places.googleMapsUri,places.location,places.rating,places.userRatingCount,places.priceLevel,places.currentOpeningHours,places.reviews,places.photos',
@@ -116,7 +116,7 @@ export async function downloadPlacePhoto(
     `https://places.googleapis.com/v1/${photoName}/media?maxWidthPx=200`,
     {
       headers: {
-        Referer: context.cloudflare.request?.headers.get('host')!,
+        Referer: context.cloudflare.request?.headers.get('host') ?? 'localhost',
         'X-Goog-Api-Key': context.cloudflare.env.PLACES_API_KEY,
       },
     }
