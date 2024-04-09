@@ -8,6 +8,5 @@ interface Env {
   PLACES_API_URL: string; // updated manually
   PLACES_API_KEY: string; // updated manually
   BUGSNAG_API_KEY: string; // updated manually
-  AI_DEFAULT_INSTRUCTION: string; // updated manually
   ENVIRONMENT: string; //updated manually
 }
