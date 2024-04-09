@@ -8,9 +8,19 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
   className?: string;
   icon?: JSX.Element;
+  forwardedRef?: React.Ref<HTMLInputElement>;
 }
 
-export default function Input({ name, label, icon, className, ...rest }: InputProps) {
+export default function Input({
+  name,
+  label,
+  icon,
+  className,
+  onChange,
+  value,
+  forwardedRef,
+  ...rest
+}: InputProps) {
   const { error, getInputProps } = useField(name);
 
   return (
@@ -25,8 +35,13 @@ export default function Input({ name, label, icon, className, ...rest }: InputPr
               'peer input input-bordered input-sm !h-10 w-full rounded-md !pl-9',
               error && 'input-error'
             )}
+            ref={forwardedRef}
             {...rest}
-            {...getInputProps({ id: name })}
+            {...getInputProps({
+              id: name,
+              onChange,
+              value,
+            })}
           />
           {icon && icon}
         </div>
