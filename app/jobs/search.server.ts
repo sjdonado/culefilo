@@ -9,7 +9,7 @@ import {
   putKVRecord,
   runLLMRequest,
   runSummarizationRequest,
-} from '~/services/cloudfare.server';
+} from '~/services/cloudflare.server';
 import {
   PlaceAPIResponse,
   getPlacesByTextAndCoordinates,
