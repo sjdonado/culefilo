@@ -10,7 +10,7 @@ import { Link, redirect, useLoaderData, useRevalidator } from '@remix-run/react'
 import { DONE_JOB_MESSAGE, SearchJobState } from '~/constants/job';
 
 import { SearchSchema } from '~/schemas/search';
-import { SearchJob } from '~/schemas/job';
+import { SearchJobSerialized } from '~/schemas/job';
 
 import { createSearchJob } from '~/jobs/search.server';
 
@@ -52,7 +52,7 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
   const url = new URL(request.url);
   const jobId = url.searchParams.get('id');
 
-  const searchJob = jobId ? await getKVRecord<SearchJob>(context, jobId) : null;
+  const searchJob = jobId ? await getKVRecord<SearchJobSerialized>(context, jobId) : null;
 
   return { jobId, searchJob };
 };
@@ -119,7 +119,15 @@ export default function SearchPage() {
             />
           </div>
         </div>
-        <SubmitButton className="w-full" message="Submit" disabled={!!searchJob} />
+        {[SearchJobState.Success, SearchJobState.Failure].includes(
+          searchJob?.state as SearchJobState
+        ) ? (
+          <Link to="/" className="btn btn-primary btn-sm w-full !h-10">
+            New search
+          </Link>
+        ) : (
+          <SubmitButton className="w-full" message="Submit" disabled={!!searchJob} />
+        )}
       </ValidatedForm>
       {jobState && (
         <div className="flex flex-col justify-center items-center gap-4 mx-auto my-12">
@@ -145,13 +153,6 @@ export default function SearchPage() {
             <PlaceCard key={place.name} place={place} />
           ))}
         </div>
-      )}
-      {[SearchJobState.Success, SearchJobState.Failure].includes(
-        searchJob?.state as SearchJobState
-      ) && (
-        <Link to="/" className="btn btn-accent btn-sm w-full !h-10" type="reset">
-          New search
-        </Link>
       )}
       {[SearchJobState.Success, SearchJobState.Failure].includes(
         searchJob?.state as SearchJobState

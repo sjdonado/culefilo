@@ -1,7 +1,7 @@
 import { AppLoadContext } from '@remix-run/cloudflare';
 import { DONE_JOB_MESSAGE, SearchJobState } from '~/constants/job';
 
-import { SearchJob, SearchJobSchema } from '~/schemas/job';
+import { SearchJob, SearchJobParsedSchema } from '~/schemas/job';
 import { PlaceGeoData } from '~/schemas/place';
 
 import {
@@ -25,7 +25,7 @@ export async function createSearchJob(
 ) {
   const key = crypto.randomUUID();
 
-  const initState = SearchJobSchema.parse({
+  const initState = SearchJobParsedSchema.parse({
     input: {
       favoriteMealName,
       zipCode: geoData.zipCode,
@@ -78,7 +78,7 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
         await putKVRecord(
           context,
           key,
-          SearchJobSchema.parse({
+          SearchJobParsedSchema.parse({
             ...job,
             state: SearchJobState.Running,
           })
@@ -130,7 +130,7 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
           await putKVRecord(
             context,
             key,
-            SearchJobSchema.parse({
+            SearchJobParsedSchema.parse({
               ...job,
               suggestions,
             })
@@ -289,7 +289,7 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
         await putKVRecord(
           context,
           key,
-          SearchJobSchema.parse({
+          SearchJobParsedSchema.parse({
             ...job,
             state: SearchJobState.Success,
             places,
