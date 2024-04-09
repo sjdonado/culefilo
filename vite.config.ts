@@ -11,5 +11,9 @@ export default defineConfig({
 
   build: {
     sourcemap: true
-  }
+  },
+
+  ssr: {
+    noExternal: ['@googlemaps/js-api-loader'],
+  },
 });
