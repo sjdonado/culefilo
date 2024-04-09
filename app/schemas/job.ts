@@ -14,22 +14,23 @@ export const SearchJobSchema = z.object({
   createdAt: z.number(),
 });
 
-export const SearchJobParsedSchema = SearchJobSchema.pick({
+export const SearchJobParsedSchema = SearchJobSchema.extend({
+  places: z.array(PlaceParsedSchema).optional(),
+});
+
+export const SearchJobSerializedSchema = SearchJobSchema.pick({
   input: true,
   state: true,
   createdAt: true,
-}).extend({
-  id: z.string(),
-  places: z.array(PlaceParsedSchema),
-});
-
-export const SearchJobSerializedSchema = SearchJobSchema.extend({
-  id: z.string(),
-  places: z.array(PlaceSchema),
-}).transform(data => ({
-  ...data,
-  createdAt: new Date(data.createdAt).toLocaleString('en-US'),
-}));
+})
+  .extend({
+    id: z.string(),
+    places: z.array(PlaceSchema),
+  })
+  .transform(data => ({
+    ...data,
+    createdAt: new Date(data.createdAt).toLocaleString('en-US'),
+  }));
 
 export type SearchJob = z.infer<typeof SearchJobSchema>;
 export type SearchJobParsed = z.infer<typeof SearchJobParsedSchema>;

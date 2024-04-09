@@ -88,7 +88,7 @@ export default function SearchPage() {
         eventSource.close();
       };
     }
-  }, [jobId, searchJob]);
+  }, [jobId, searchJob, revalidator]);
 
   useEffect(() => {
     startSearchJob();

@@ -1,7 +1,7 @@
 import type { AppLoadContext } from '@remix-run/cloudflare';
 import { DONE_JOB_MESSAGE, SearchJobState } from '~/constants/job';
 
-import type { SearchJob} from '~/schemas/job';
+import type { SearchJob } from '~/schemas/job';
 import { SearchJobParsedSchema } from '~/schemas/job';
 import type { PlaceGeoData } from '~/schemas/place';
 
@@ -13,8 +13,7 @@ import {
   runSummarizationRequest,
 } from '~/services/cloudflare.server';
 
-import type {
-  PlaceAPIResponse} from '~/services/places.server';
+import type { PlaceAPIResponse } from '~/services/places.server';
 import {
   downloadPlacePhoto,
   getPlacesByTextAndCoordinates,

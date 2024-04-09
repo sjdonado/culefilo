@@ -1,7 +1,7 @@
 import { Link } from '@remix-run/react';
-import type { SearchJobParsed } from '~/schemas/job';
+import type { SearchJobSerialized } from '~/schemas/job';
 
-export default function SearchCard({ search }: { search: SearchJobParsed }) {
+export default function SearchCard({ search }: { search: SearchJobSerialized }) {
   return (
     <div className="flex flex-col gap-2 rounded-lg border p-4">
       <div className="mb-1 flex flex-wrap justify-between gap-4">
