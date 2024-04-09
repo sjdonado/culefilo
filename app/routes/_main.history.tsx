@@ -3,7 +3,7 @@ import { useLoaderData } from '@remix-run/react';
 
 import { SearchJob, SearchJobSerializedSchema } from '~/schemas/job';
 
-import { getAllKVRecords } from '~/services/cloudfare.server';
+import { getAllKVRecords } from '~/services/cloudflare.server';
 
 import SearchCard from '~/components/SearchCard';
 
