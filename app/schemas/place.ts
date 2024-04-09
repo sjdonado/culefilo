@@ -35,9 +35,9 @@ export const PlaceParsedSchema = PlaceSchema.pick({
 
 export const PlaceGeoDataSchema = z.object({
   zipCode: z.string(),
-  country: z.string(),
-  city: z.string(),
-  state: z.string(),
+  country: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
   coordinates: z.object({
     latitude: z.number(),
     longitude: z.number(),

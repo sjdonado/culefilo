@@ -26,6 +26,8 @@ export async function createSearchJob(
     input: {
       favoriteMealName,
       zipCode: geoData.zipCode,
+      latitude: geoData.coordinates.latitude,
+      longitude:geoData.coordinates.longitude,
     },
     state: SearchJobState.Created,
     geoData,

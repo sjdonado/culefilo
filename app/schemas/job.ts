@@ -6,7 +6,10 @@ import { SearchSchema } from './search';
 import { PlaceGeoDataSchema, PlaceParsedSchema, PlaceSchema } from './place';
 
 export const SearchJobSchema = z.object({
-  input: SearchSchema,
+  input: SearchSchema.extend({
+    latitude: z.number(),
+    longitude: z.number(),
+  }),
   geoData: PlaceGeoDataSchema,
   state: z.enum(ALL_SEARCH_JOB_STATES),
   places: z.array(PlaceParsedSchema).optional(),
