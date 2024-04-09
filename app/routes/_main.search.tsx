@@ -253,7 +253,9 @@ export default function SearchPage() {
           ))}
         </div>
       )}
-      {searchJob && (
+      {[SearchJobState.Success, SearchJobState.Failure].includes(
+        searchJob?.state as SearchJobState
+      ) && (
         <Link to="/" className="btn btn-accent btn-sm w-full !h-10" type="reset">
           New search
         </Link>
