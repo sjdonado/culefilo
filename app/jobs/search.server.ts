@@ -113,8 +113,8 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
 
           const response = await runLLMRequest(
             context,
-            `Other names for this meal: "${originalQuery}" (return each name in quotes, omit explanations)`,
-            context.cloudflare.env.AI_DEFAULT_INSTRUCTION
+            `Other names for this meal: "${originalQuery}"`,
+            'return each name in quotes, omit explanations'
           );
 
           const suggestionsList =
@@ -233,8 +233,8 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
 
             const response = await runLLMRequest(
               context,
-              `Which of these captions best describes "${place.displayName.text}"? '${captionsList}' (only return the number of the best caption, omit explanations)`,
-              context.cloudflare.env.AI_DEFAULT_INSTRUCTION
+              `Which of these captions best describes "${place.displayName.text}"? '${captionsList}'`,
+              'only return the number of the best caption, omit explanations'
             );
 
             const choosedCaption = parseInt(response.match(/\d+/)?.[0] ?? '1') - 1;

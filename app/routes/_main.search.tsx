@@ -71,7 +71,6 @@ export default function SearchPage() {
 
       eventSource.onmessage = event => {
         const [time, percentage, message] = event.data.split(',');
-        console.log({ time, percentage, message });
 
         if (message === DONE_JOB_MESSAGE) {
           eventSource.close();
@@ -93,8 +92,6 @@ export default function SearchPage() {
   useEffect(() => {
     startSearchJob();
   }, [startSearchJob]);
-
-  console.log('search', searchJob, 'jobState', jobState);
 
   return (
     <div className="flex flex-col gap-6">
