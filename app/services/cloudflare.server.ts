@@ -1,12 +1,6 @@
 import { Ai } from '@cloudflare/ai';
-import type { AiTextGenerationOutput } from '@cloudflare/ai/dist/ai/tasks/text-generation';
 
 import { AppLoadContext } from '@remix-run/cloudflare';
-
-type AiTextGenerationOutputWithResponse = Extract<
-  AiTextGenerationOutput,
-  { response?: string }
->;
 
 export async function putKVRecord<T>(context: AppLoadContext, key: string, value: T) {
   return context.cloudflare.env.CULEFILO_KV.put(key, JSON.stringify(value));
@@ -36,12 +30,15 @@ export async function runLLMRequest(
   instruction: string
 ) {
   // https://developers.cloudflare.com/workers-ai/configuration/bindings/
-  // https://developers.cloudflare.com/workers-ai/models/mistral-7b-instruct-v0.1/
   const ai = new Ai(context.cloudflare.env.AI);
 
   const messages = [
     {
       role: 'system',
+      content: 'you are a culinary expert assistant',
+    },
+    {
+      role: 'assistant',
       content: instruction,
     },
     {
@@ -50,14 +47,15 @@ export async function runLLMRequest(
     },
   ];
 
-  const data = (await ai.run('@hf/thebloke/llama-2-13b-chat-awq', {
+  const data = await ai.run('@hf/thebloke/llama-2-13b-chat-awq', {
     messages,
-    max_tokens: 512,
-  })) as AiTextGenerationOutputWithResponse;
+    max_tokens: 512, // default is 256
+    stream: false,
+  });
 
   console.log(`[${runLLMRequest.name}] ${JSON.stringify({ prompt, data }, null, 2)}`);
 
-  return data.response ?? '';
+  return (data as { response: string }).response;
 }
 
 export async function runSummarizationRequest(

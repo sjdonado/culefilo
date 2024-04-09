@@ -14,7 +14,7 @@ import { SearchJob } from '~/schemas/job';
 
 import { createSearchJob } from '~/jobs/search.server';
 
-import { getKVRecord } from '~/services/cloudfare.server';
+import { getKVRecord } from '~/services/cloudflare.server';
 import getLocationDataFromZipCode from '~/services/opendatasoft.server';
 
 import Input from '~/components/Input';
