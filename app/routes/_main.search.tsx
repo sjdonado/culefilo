@@ -150,7 +150,7 @@ export default function SearchPage() {
       {[SearchJobState.Success, SearchJobState.Failure].includes(
         searchJob?.state as SearchJobState
       ) && (
-        <Link to="/" className="btn btn-primary btn-sm !h-10 w-full text-base-100">
+        <Link to="/" className="link !h-10 w-full text-center">
           Go to new search
         </Link>
       )}
