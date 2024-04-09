@@ -152,7 +152,6 @@ export default function SearchPage() {
         ?.long_name;
       const onlyNumbersRegExp = /^\d+$/;
       if (parsedZipCode && onlyNumbersRegExp.test(parsedZipCode)) {
-        console.log('place', place);
         setLatitude(place?.geometry?.location?.lat());
         setLongitude(place?.geometry?.location?.lng());
         cleanUpAutocomplete(autocomplete);
