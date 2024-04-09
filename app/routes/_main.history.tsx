@@ -1,7 +1,7 @@
 import { LoaderFunctionArgs } from '@remix-run/cloudflare';
 import { useLoaderData } from '@remix-run/react';
 
-import { SearchJob, SearchJobSerializedSchema } from '~/schemas/job';
+import { SearchJob, SearchJobParsedSchema } from '~/schemas/job';
 
 import { getAllKVRecords } from '~/services/cloudfare.server';
 
@@ -13,7 +13,7 @@ export const loader = async ({ context }: LoaderFunctionArgs) => {
   const searches = await Promise.all(
     records.map(async record => {
       // TEMPFIX: safeParse ignores previous results with different schema (it can be removed if KV is purged)
-      const result = await SearchJobSerializedSchema.safeParseAsync({
+      const result = await SearchJobParsedSchema.safeParseAsync({
         id: record.id,
         input: record.input,
         state: record.state,

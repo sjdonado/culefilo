@@ -17,7 +17,7 @@ export async function getKVRecord<T>(context: AppLoadContext, key: string) {
 }
 
 export async function getAllKVRecords<T>(context: AppLoadContext) {
-  const data = await context.cloudflare.env.CULEFILO_KV.list({ limit: 10 });
+  const data = await context.cloudflare.env.CULEFILO_KV.list();
 
   return Promise.all(
     data.keys.map(async ({ name }) => {
@@ -85,4 +85,15 @@ export async function runSummarizationRequest(
   );
 
   return data.summary;
+}
+
+export async function runImageToTextRequest(context: AppLoadContext, image: number[]) {
+  // https://developers.cloudflare.com/workers-ai/configuration/bindings/
+  const ai = new Ai(context.cloudflare.env.AI);
+
+  const data = await ai.run('@cf/unum/uform-gen2-qwen-500m', {
+    image,
+  });
+
+  return data.description;
 }
