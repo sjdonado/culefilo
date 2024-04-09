@@ -6,7 +6,7 @@ export default function Header() {
       <Link to="/" className="link my-2">
         <h1 className="text-3xl font-bold">Cule filo</h1>
       </Link>
-      <p className="text-gray-500 text-justify">
+      <p className="text-justify text-gray-500">
         Search for your favorite meal near you, quickly, enhanced by AI and for free.
       </p>
     </div>

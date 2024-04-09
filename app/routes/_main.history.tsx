@@ -1,9 +1,10 @@
-import { LoaderFunctionArgs } from '@remix-run/cloudflare';
+import type { LoaderFunctionArgs } from '@remix-run/cloudflare';
 import { useLoaderData } from '@remix-run/react';
 
-import { SearchJob, SearchJobParsedSchema } from '~/schemas/job';
+import type { SearchJob } from '~/schemas/job';
+import { SearchJobSerializedSchema } from '~/schemas/job';
 
-import { getAllKVRecords } from '~/services/cloudfare.server';
+import { getAllKVRecords } from '~/services/cloudflare.server';
 
 import SearchCard from '~/components/SearchCard';
 
@@ -13,7 +14,7 @@ export const loader = async ({ context }: LoaderFunctionArgs) => {
   const searches = await Promise.all(
     records.map(async record => {
       // TEMPFIX: safeParse ignores previous results with different schema (it can be removed if KV is purged)
-      const result = await SearchJobParsedSchema.safeParseAsync({
+      const result = await SearchJobSerializedSchema.safeParseAsync({
         id: record.id,
         input: record.input,
         state: record.state,
@@ -41,7 +42,7 @@ export default function HistoryPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      {searches.length === 0 && <p className="text-center my-12">No results found :(</p>}
+      {searches.length === 0 && <p className="my-12 text-center">No results found :(</p>}
       {searches.map(search => (
         <SearchCard key={search.id} search={search} />
       ))}

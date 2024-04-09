@@ -1,8 +1,9 @@
-import { AppLoadContext } from '@remix-run/cloudflare';
+import type { AppLoadContext } from '@remix-run/cloudflare';
 import { DONE_JOB_MESSAGE, SearchJobState } from '~/constants/job';
 
-import { SearchJob, SearchJobSchema } from '~/schemas/job';
-import { PlaceGeoData } from '~/schemas/place';
+import type { SearchJob } from '~/schemas/job';
+import { SearchJobParsedSchema } from '~/schemas/job';
+import type { PlaceGeoData } from '~/schemas/place';
 
 import {
   getKVRecord,
@@ -10,9 +11,10 @@ import {
   runImageToTextRequest,
   runLLMRequest,
   runSummarizationRequest,
-} from '~/services/cloudfare.server';
+} from '~/services/cloudflare.server';
+
+import type { PlaceAPIResponse } from '~/services/places.server';
 import {
-  PlaceAPIResponse,
   downloadPlacePhoto,
   getPlacesByTextAndCoordinates,
 } from '~/services/places.server';
@@ -24,7 +26,7 @@ export async function createSearchJob(
 ) {
   const key = crypto.randomUUID();
 
-  const initState = SearchJobSchema.parse({
+  const initState = SearchJobParsedSchema.parse({
     input: {
       favoriteMealName,
       zipCode: geoData.zipCode,
@@ -77,7 +79,7 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
         await putKVRecord(
           context,
           key,
-          SearchJobSchema.parse({
+          SearchJobParsedSchema.parse({
             ...job,
             state: SearchJobState.Running,
           })
@@ -112,8 +114,8 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
 
           const response = await runLLMRequest(
             context,
-            `Other names for this meal: "${originalQuery}" (return each name in quotes, omit explanations)`,
-            context.cloudflare.env.AI_DEFAULT_INSTRUCTION
+            `Other names for this meal: "${originalQuery}"`,
+            'return each name in quotes, omit explanations'
           );
 
           const suggestionsList =
@@ -129,7 +131,7 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
           await putKVRecord(
             context,
             key,
-            SearchJobSchema.parse({
+            SearchJobParsedSchema.parse({
               ...job,
               suggestions,
             })
@@ -232,8 +234,8 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
 
             const response = await runLLMRequest(
               context,
-              `Which of these captions best describes "${place.displayName.text}"? '${captionsList}' (only return the number of the best caption, omit explanations)`,
-              context.cloudflare.env.AI_DEFAULT_INSTRUCTION
+              `Which of these captions best describes "${place.displayName.text}"? '${captionsList}'`,
+              'only return the number of the best caption, omit explanations'
             );
 
             const choosedCaption = parseInt(response.match(/\d+/)?.[0] ?? '1') - 1;
@@ -288,7 +290,7 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
         await putKVRecord(
           context,
           key,
-          SearchJobSchema.parse({
+          SearchJobParsedSchema.parse({
             ...job,
             state: SearchJobState.Success,
             places,

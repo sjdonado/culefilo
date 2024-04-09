@@ -7,7 +7,7 @@ import Footer from '~/components/Footer';
 export default function MainLayout() {
   return (
     <>
-      <main className="min-screen-2 p-4 flex flex-col gap-4  max-w-3xl m-auto">
+      <main className="min-screen-2 m-auto flex max-w-3xl flex-col  gap-4 p-4">
         <Header />
         <Tabs />
         <Outlet />
