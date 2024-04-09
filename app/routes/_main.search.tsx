@@ -120,15 +120,7 @@ export default function SearchPage() {
             />
           </div>
         </div>
-        {[SearchJobState.Success, SearchJobState.Failure].includes(
-          searchJob?.state as SearchJobState
-        ) ? (
-          <Link to="/" className="btn btn-primary btn-sm !h-10 w-full">
-            New search
-          </Link>
-        ) : (
-          <SubmitButton className="w-full" message="Submit" disabled={!!searchJob} />
-        )}
+        <SubmitButton className="w-full" message="Submit" disabled={!!searchJob} />
       </ValidatedForm>
       {jobState && (
         <div className="mx-auto my-12 flex flex-col items-center justify-center gap-4">
@@ -154,6 +146,13 @@ export default function SearchPage() {
             <PlaceCard key={place.name} place={place} />
           ))}
         </div>
+      )}
+      {[SearchJobState.Success, SearchJobState.Failure].includes(
+        searchJob?.state as SearchJobState
+      ) && (
+        <Link to="/" className="btn btn-primary btn-sm !h-10 w-full text-base-100">
+          Go to new search
+        </Link>
       )}
       {[SearchJobState.Success, SearchJobState.Failure].includes(
         searchJob?.state as SearchJobState
