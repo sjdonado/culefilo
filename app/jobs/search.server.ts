@@ -16,7 +16,7 @@ import {
 import {
   downloadPlacePhoto,
   getPlacesByTextAndCoordinates,
-  PlaceAPIResponse,
+  type PlaceAPIResponse,
 } from '~/services/places.server';
 
 export async function createSearchJob(
