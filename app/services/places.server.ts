@@ -61,7 +61,7 @@ export async function getPlacesByTextAndCoordinates(
   const payload = {
     textQuery: text,
     includedType: 'restaurant',
-    maxResultCount: 6,
+    maxResultCount: 3,
     // locationRestriction does not support a circle viewport
     locationRestriction: {
       rectangle: {
