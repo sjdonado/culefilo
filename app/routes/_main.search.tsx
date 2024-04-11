@@ -1,14 +1,12 @@
 import type { CSSProperties } from 'react';
-import { useCallback, useEffect, useState, useRef } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { MagnifyingGlassIcon, MapPinIcon } from '@heroicons/react/24/outline';
 
-import { ValidatedForm, validationError, useControlField } from 'remix-validated-form';
+import { ValidatedForm, validationError } from 'remix-validated-form';
 import { withZod } from '@remix-validated-form/with-zod';
 
 import type { LoaderFunctionArgs, ActionFunctionArgs } from '@remix-run/cloudflare';
 import { Link, redirect, useLoaderData, useRevalidator } from '@remix-run/react';
-
-import { Loader as GoogleMapsApiLoader } from "@googlemaps/js-api-loader"
 
 import { DONE_JOB_MESSAGE, SearchJobState } from '~/constants/job';
 
@@ -22,6 +20,7 @@ import { getKVRecord } from '~/services/cloudflare.server';
 import Input from '~/components/Input';
 import SubmitButton from '~/components/SubmitButton';
 import PlaceCard from '~/components/PlaceCard';
+import AutocompletePlacesInput from '~/components/AutocompletePlacesInput';
 
 const validator = withZod(SearchSchema);
 
@@ -62,21 +61,10 @@ export default function SearchPage() {
   const [jobState, setJobState] = useState<
     { time: string; percentage: string; message: string } | undefined
   >();
-  const [zipCode, setZipCode] = useState<string>(
-    searchJob?.input.zipCode
-      ?? ''
-  );
-  const [
-    isAutocompleteInitialized,
-    setIsAutocompleteInitialized,
-  ] = useState<boolean>(false);
 
-  const [latitude, setLatitude] =
-    useControlField<number | undefined>('latitude', 'searchForm');
-  const [longitude, setLongitude] =
-    useControlField<number | undefined>('longitude', 'searchForm');
-
-  const zipCodeInputRef = useRef(null);
+  const [coordinates, setCoordinates] = useState<
+    { latitude:  number; longitude: number } | undefined
+  >();
 
   const startSearchJob = useCallback(async () => {
     if (searchJob?.state === SearchJobState.Created) {
@@ -106,80 +94,12 @@ export default function SearchPage() {
     startSearchJob();
   }, [startSearchJob]);
 
+  const onCoordinatesChange =
+    (coordinates: { latitude: number; longitude: number }) => {
+      setCoordinates(coordinates);
+    };
+
   console.log('search', searchJob, 'jobState', jobState);
-
-  const initializeAutocomplete = async ({
-    input,
-    onPlaceChangeHandler,
-  } : {
-    input: HTMLInputElement,
-    onPlaceChangeHandler: (
-      autocomplete: google.maps.places.Autocomplete,
-    ) => Function,
-  }) => {
-    const googleMapsApiLoader = new GoogleMapsApiLoader({
-      apiKey: placesApiKey,
-      version: "weekly",
-    });
-    const { Autocomplete }  = await googleMapsApiLoader
-      .importLibrary('places');
-    const options = {
-      fields: [
-        'formatted_address',
-        'geometry',
-        'name',
-        'address_components'
-      ],
-      strictBounds: false,
-    };
-    const autocomplete = new Autocomplete(
-      input,
-      options,
-    );
-    const onPlaceChange = onPlaceChangeHandler(autocomplete);
-    autocomplete.addListener('place_changed', onPlaceChange);
-    setIsAutocompleteInitialized(true);
-  };
-
-  const onPlaceChangeHandler = (
-    autocomplete: google.maps.places.Autocomplete,
-  ) => {
-    return () => {
-      const place = autocomplete.getPlace();
-      const parsedZipCode = place
-        ?.address_components
-        ?.find((component) => component.types.includes('postal_code'))
-        ?.long_name;
-      const onlyNumbersRegExp = /^\d+$/;
-      if (parsedZipCode && onlyNumbersRegExp.test(parsedZipCode)) {
-        setLatitude(place?.geometry?.location?.lat());
-        setLongitude(place?.geometry?.location?.lng());
-        cleanUpAutocomplete(autocomplete);
-      }
-    };
-  }
-
-  const cleanUpAutocomplete = (
-    autocomplete: google.maps.places.Autocomplete
-  ) => {
-    google.maps?.event.clearInstanceListeners(autocomplete);
-    setIsAutocompleteInitialized(false);
-  };
-
-  useEffect(() => {
-    const loadAutocomplete = async() => {
-      if (zipCodeInputRef.current) {
-        if (!isAutocompleteInitialized) {
-          await initializeAutocomplete({
-            input: zipCodeInputRef.current,
-            onPlaceChangeHandler,
-          });
-        }
-      }
-    }
-
-    loadAutocomplete();
-  });
 
   return (
     <div className="flex flex-col gap-6">
@@ -196,36 +116,22 @@ export default function SearchPage() {
               defaultValue={searchJob?.input.favoriteMealName}
               disabled={!!searchJob}
             />
-            <Input
+            <AutocompletePlacesInput
               name="zipCode"
               label="Zip code"
-              type="number"
               placeholder="080001"
               icon={<MapPinIcon className="form-input-icon" />}
               defaultValue={searchJob?.input.zipCode}
               disabled={!!searchJob}
-              onChange={(e) => setZipCode(e.target.value)}
-              value={zipCode}
-              forwardedRef={zipCodeInputRef}
-            />
-            <input
-              type="hidden"
-              name="latitude"
-              value={latitude}
-              onChange={(e) => setLatitude(parseFloat(e.target.value))}
-            />
-            <input
-              type="hidden"
-              name="longitude"
-              value={longitude}
-              onChange={(e) => setLongitude(parseFloat(e.target.value))}
+              placesApiKey={placesApiKey}
+              onCoordinatesChange={onCoordinatesChange}
             />
           </div>
         </div>
         <SubmitButton
           className="w-full"
           message="Submit"
-          disabled={!!searchJob || (!latitude && !longitude)}
+          disabled={!!searchJob || (!coordinates)}
         />
       </ValidatedForm>
       {jobState && (
