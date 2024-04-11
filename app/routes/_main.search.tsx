@@ -21,6 +21,7 @@ import Input from '~/components/Input';
 import SubmitButton from '~/components/SubmitButton';
 import PlaceCard from '~/components/PlaceCard';
 import AutocompletePlacesInput from '~/components/AutocompletePlacesInput';
+import Logs from '~/components/Logs';
 
 const validator = withZod(SearchSchema);
 
@@ -162,23 +163,14 @@ export default function SearchPage() {
       {[SearchJobState.Success, SearchJobState.Failure].includes(
         searchJob?.state as SearchJobState
       ) && (
-        <Link to="/" className="btn btn-primary btn-sm !h-10 w-full text-base-100">
+        <Link to="/" className="link !h-10 w-full text-center">
           Go to new search
         </Link>
       )}
       {[SearchJobState.Success, SearchJobState.Failure].includes(
         searchJob?.state as SearchJobState
       ) && (
-        <div className="mb-4 flex flex-col justify-center gap-4">
-          <h3 className="text-lg">Search logs</h3>
-          <div className="flex w-full flex-col items-start gap-2">
-            {(searchJob?.logs ?? []).map(log => (
-              <p key={log} className="text-sm text-gray-500">
-                {log}
-              </p>
-            ))}
-          </div>
-        </div>
+        <Logs logs={searchJob?.logs ?? []} />
       )}
     </div>
   );

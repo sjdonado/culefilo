@@ -155,7 +155,7 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
           }
         }
 
-        if (allPlaces.size > 3) {
+        if (allPlaces.size >= 3) {
           sendEvent(
             'Summarizing results...',
             increaseProgress(progress < 0.4 ? 0.4 - progress : 0)
