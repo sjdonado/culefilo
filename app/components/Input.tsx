@@ -3,14 +3,24 @@ import { useField } from 'remix-validated-form';
 
 import type { InputHTMLAttributes } from 'react';
 
-interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
+export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   name: string;
   label: string;
   className?: string;
   icon?: JSX.Element;
+  forwardedRef?: React.Ref<HTMLInputElement>;
 }
 
-export default function Input({ name, label, icon, className, ...rest }: InputProps) {
+export default function Input({
+  name,
+  label,
+  icon,
+  className,
+  onChange,
+  value,
+  forwardedRef,
+  ...rest
+}: InputProps) {
   const { error, getInputProps } = useField(name);
 
   return (
@@ -25,8 +35,13 @@ export default function Input({ name, label, icon, className, ...rest }: InputPr
               'peer input input-sm input-bordered !h-10 w-full rounded-md !pl-9',
               error && 'input-error'
             )}
+            ref={forwardedRef}
             {...rest}
-            {...getInputProps({ id: name })}
+            {...getInputProps({
+              id: name,
+              onChange,
+              value,
+            })}
           />
           {icon && icon}
         </div>

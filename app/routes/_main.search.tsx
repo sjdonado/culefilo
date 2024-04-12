@@ -16,11 +16,11 @@ import type { SearchJobSerialized } from '~/schemas/job';
 import { createSearchJob } from '~/jobs/search.server';
 
 import { getKVRecord } from '~/services/cloudflare.server';
-import getLocationDataFromZipCode from '~/services/opendatasoft.server';
 
 import Input from '~/components/Input';
 import SubmitButton from '~/components/SubmitButton';
 import PlaceCard from '~/components/PlaceCard';
+import AutocompletePlacesInput from '~/components/AutocompletePlacesInput';
 import Logs from '~/components/Logs';
 
 const validator = withZod(SearchSchema);
@@ -32,18 +32,13 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
     return validationError(fieldValues.error);
   }
 
-  const { favoriteMealName, zipCode } = fieldValues.data;
+  const { favoriteMealName, zipCode, latitude, longitude } = fieldValues.data;
 
-  // TODO: component asking for it (maybe a cute flag)
-  const countryCode = 'DE';
-
-  const location = await getLocationDataFromZipCode(context, countryCode, zipCode);
-
-  if (!location) {
-    throw new Error(
-      `[${getLocationDataFromZipCode.name}] No results found for ${zipCode}`
-    );
-  }
+  const coordinates = {
+    latitude: parseFloat(latitude),
+    longitude: parseFloat(longitude),
+  };
+  const location = { zipCode, coordinates };
 
   const key = await createSearchJob(context, favoriteMealName, location);
 
@@ -55,16 +50,21 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
   const jobId = url.searchParams.get('id');
 
   const searchJob = jobId ? await getKVRecord<SearchJobSerialized>(context, jobId) : null;
+  const placesApiKey = context.cloudflare.env.PLACES_API_KEY;
 
-  return { jobId, searchJob };
+  return { jobId, searchJob, placesApiKey };
 };
 
 export default function SearchPage() {
   const revalidator = useRevalidator();
-  const { jobId, searchJob } = useLoaderData<typeof loader>();
+  const { jobId, searchJob, placesApiKey } = useLoaderData<typeof loader>();
 
   const [jobState, setJobState] = useState<
     { time: string; percentage: string; message: string } | undefined
+  >();
+
+  const [coordinates, setCoordinates] = useState<
+    { latitude:  number; longitude: number } | undefined
   >();
 
   const startSearchJob = useCallback(async () => {
@@ -95,9 +95,16 @@ export default function SearchPage() {
     startSearchJob();
   }, [startSearchJob]);
 
+  const onCoordinatesChange =
+    (coordinates: { latitude: number; longitude: number }) => {
+      setCoordinates(coordinates);
+    };
+
+  console.log('search', searchJob, 'jobState', jobState);
+
   return (
     <div className="flex flex-col gap-6">
-      <ValidatedForm validator={validator} method="post" className="flex flex-col gap-6">
+      <ValidatedForm id="searchForm" validator={validator} method="post" className="flex flex-col gap-6">
         <div className="rounded-lg border bg-base-200/30 p-4 md:p-6">
           <div className="flex gap-4">
             <Input
@@ -110,18 +117,23 @@ export default function SearchPage() {
               defaultValue={searchJob?.input.favoriteMealName}
               disabled={!!searchJob}
             />
-            <Input
+            <AutocompletePlacesInput
               name="zipCode"
               label="Zip code"
-              type="number"
               placeholder="080001"
               icon={<MapPinIcon className="form-input-icon" />}
               defaultValue={searchJob?.input.zipCode}
               disabled={!!searchJob}
+              placesApiKey={placesApiKey}
+              onCoordinatesChange={onCoordinatesChange}
             />
           </div>
         </div>
-        <SubmitButton className="w-full" message="Submit" disabled={!!searchJob} />
+        <SubmitButton
+          className="w-full"
+          message="Submit"
+          disabled={!!searchJob || (!coordinates)}
+        />
       </ValidatedForm>
       {jobState && (
         <div className="mx-auto my-12 flex flex-col items-center justify-center gap-4">

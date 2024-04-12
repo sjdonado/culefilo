@@ -13,10 +13,10 @@ import {
   runSummarizationRequest,
 } from '~/services/cloudflare.server';
 
-import type { PlaceAPIResponse } from '~/services/places.server';
 import {
   downloadPlacePhoto,
   getPlacesByTextAndCoordinates,
+  type PlaceAPIResponse,
 } from '~/services/places.server';
 
 export async function createSearchJob(
@@ -30,6 +30,8 @@ export async function createSearchJob(
     input: {
       favoriteMealName,
       zipCode: geoData.zipCode,
+      latitude: geoData.coordinates.latitude,
+      longitude:geoData.coordinates.longitude,
     },
     state: SearchJobState.Created,
     geoData,

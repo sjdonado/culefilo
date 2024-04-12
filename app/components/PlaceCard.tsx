@@ -2,7 +2,7 @@ import type { Place } from '~/schemas/place';
 
 export default function PlaceCard({ place }: { place: Place }) {
   return (
-    <div className="border-base-custom flex gap-4 rounded-lg border p-4">
+    <div className="flex gap-4 rounded-lg border p-4">
       {place.thumbnail && (
         <div className="avatar m-auto pt-1">
           <div className="h-32 rounded-lg">
