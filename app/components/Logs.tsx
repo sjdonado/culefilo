@@ -19,7 +19,7 @@ export default function Logs({ logs }: LogsProps) {
     <div className="mb-4 flex flex-col justify-center gap-4">
       <span className="divider" />
       <div className="flex place-content-start items-center gap-2">
-        <h3 className="text-lg">Search logs</h3>
+        <h3 className="cursor-pointer text-lg">Search logs</h3>
         {isExpanded && (
           <ChevronUpIcon
             className="cursor-pointer"

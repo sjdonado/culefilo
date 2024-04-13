@@ -11,7 +11,6 @@ export const PlaceSchema = z.object({
   thumbnail: z.string().nullable(),
   rating: z.string(),
   price: z.string().nullable(),
-  isOpen: z.boolean().nullable(),
 });
 
 export const PlaceParsedSchema = PlaceSchema.pick({
@@ -28,14 +27,12 @@ export const PlaceParsedSchema = PlaceSchema.pick({
       count: z.number().optional(),
     }),
     priceLevel: z.string().optional(),
-    isOpen: z.boolean().optional(),
   })
   .transform(({ rating, priceLevel, ...data }) => ({
     ...data,
     rating:
       !!rating.number && !!rating.count ? `${rating.number} (${rating.count})` : null,
     price: parsePlacePriceLevel(priceLevel ?? ''),
-    isOpen: data.isOpen ?? null,
   }));
 
 export const PlaceLocationSchema = z.object({

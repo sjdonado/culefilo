@@ -264,7 +264,6 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
           const name = place.displayName.text;
           const address = place.formattedAddress;
           const url = place.googleMapsUri;
-          const isOpen = place.currentOpeningHours?.openNow;
 
           const description =
             placesDescriptions.find(p => p?.id === id)?.description ?? null;
@@ -280,7 +279,6 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
             thumbnail,
             rating: { number: place.rating, count: place.userRatingCount },
             price: place.priceLevel,
-            isOpen,
           };
         });
 
