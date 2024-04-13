@@ -10,4 +10,16 @@ export const ALL_SEARCH_JOB_STATES = Object.values(SearchJobState) as [
   ...SearchJobState[],
 ];
 
+export enum SearchJobStage {
+  Initial = 'initial',
+  Suggestions = 'suggestions',
+  Summarization = 'summarization',
+  Parsing = 'parsing',
+}
+
+export const ALL_SEARCH_JOB_STAGES = Object.values(SearchJobStage) as [
+  SearchJobStage,
+  ...SearchJobStage[],
+];
+
 export const DONE_JOB_MESSAGE = 'done';

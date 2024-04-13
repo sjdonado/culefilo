@@ -1,7 +1,7 @@
 import type { AppLoadContext } from '@remix-run/cloudflare';
 import { DONE_JOB_MESSAGE, SearchJobState } from '~/constants/job';
 
-import type { SearchJob } from '~/schemas/job';
+import type { SearchJob, SearchJobParsed } from '~/schemas/job';
 import { SearchJobParsedSchema } from '~/schemas/job';
 import type { PlaceLocation } from '~/schemas/place';
 
@@ -61,6 +61,7 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
 
   const stream = new ReadableStream({
     async start(controller) {
+      const searchJob = {};
       const logs: string[] = [];
       let progress = 0;
 
@@ -73,18 +74,25 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
 
       const increaseProgress = (increment: number) => (progress += increment);
 
+      const updateSearchJobState = async (payload: Partial<SearchJobParsed>) => {
+        Object.assign(
+          searchJob,
+          SearchJobParsedSchema.parse({
+            ...searchJob,
+            ...payload,
+          })
+        );
+        await putKVRecord(context, key, searchJob);
+      };
+
       try {
         console.log(`[${startOrCheckSearchJob.name}] (${key}) started`);
         sendEvent('Search started...', progress);
 
-        await putKVRecord(
-          context,
-          key,
-          SearchJobParsedSchema.parse({
-            ...job,
-            state: SearchJobState.Running,
-          })
-        );
+        await updateSearchJobState({
+          state: SearchJobState.Running,
+          stage: SearchJobStage.Initial,
+        });
 
         const allPlaces = new Map<string, PlaceAPIResponse['places'][0]>();
 
@@ -111,7 +119,11 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
 
         if (allPlaces.size < 3) {
           console.log(`[${startOrCheckSearchJob.name}] (${key}) LLM suggestions started`);
+
           sendEvent('Looking for suggestions...', increaseProgress(0.2));
+          await updateSearchJobState({
+            stage: SearchJobStage.Suggestions,
+          });
 
           const response = await runLLMRequest(
             context,
@@ -127,15 +139,6 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
             new Set(
               suggestionsList.map(s => s.toLowerCase()).filter(s => s !== originalQuery)
             )
-          );
-
-          await putKVRecord(
-            context,
-            key,
-            SearchJobParsedSchema.parse({
-              ...job,
-              suggestions,
-            })
           );
 
           if (suggestions.length === 0) {
@@ -160,6 +163,10 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
             increaseProgress(progress < 0.4 ? 0.4 - progress : 0)
           );
         }
+
+        await updateSearchJobState({
+          stage: SearchJobStage.Summarization,
+        });
 
         const topPlaces = Array.from(allPlaces.values()).slice(0, 3);
 
@@ -259,6 +266,10 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
           increaseProgress(progress < 0.8 ? 0.8 - progress : 0)
         );
 
+        await updateSearchJobState({
+          stage: SearchJobStage.Parsing,
+        });
+
         const places = topPlaces.map(place => {
           const id = place.id;
           const name = place.displayName.text;
@@ -286,16 +297,11 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
 
         sendEvent(`Search completed successfully in ${duration}s`, 0.99);
 
-        await putKVRecord(
-          context,
-          key,
-          SearchJobParsedSchema.parse({
-            ...job,
-            state: SearchJobState.Success,
-            places,
-            logs,
-          })
-        );
+        await updateSearchJobState({
+          state: SearchJobState.Success,
+          places,
+          logs,
+        });
 
         sendEvent(DONE_JOB_MESSAGE, 1);
         console.log(`[${startOrCheckSearchJob.name}] (${key}) finished`);

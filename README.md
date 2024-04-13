@@ -1,4 +1,4 @@
-# Cule filo - AI-powered restaurant search engine
+# Cule Filo - AI-powered restaurant search engine
 
 > Discover the top 3 restaurants serving your favorite food near you. Just enter your craving and location in our free AI-powered app, and start your culinary adventure today!. Our submittion to the [Cloudflare AI Challenge.](https://dev.to/devteam/join-us-for-the-cloudflare-ai-challenge-3000-in-prizes-5f99)
 
