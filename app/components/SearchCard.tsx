@@ -6,7 +6,7 @@ export default function SearchCard({ search }: { search: SearchJobSerialized }) 
     <div className="flex flex-col gap-2 rounded-lg border p-4">
       <div className="mb-1 flex flex-wrap justify-between gap-4">
         <Link to={`/search?id=${search.id}`} className="link">
-          {search.input.favoriteMealName} - {search.input.zipCode}
+          {search.input.favoriteMealName} - {search.input.address}
         </Link>
         <div className="badge badge-ghost">
           <span className="text-xs font-bold">{search.state}</span>

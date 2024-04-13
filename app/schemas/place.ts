@@ -38,11 +38,7 @@ export const PlaceParsedSchema = PlaceSchema.pick({
     isOpen: data.isOpen ?? null,
   }));
 
-export const PlaceGeoDataSchema = z.object({
-  zipCode: z.string(),
-  country: z.string().optional(),
-  city: z.string().optional(),
-  state: z.string().optional(),
+export const PlaceLocationSchema = z.object({
   coordinates: z.object({
     latitude: z.number(),
     longitude: z.number(),
@@ -65,4 +61,4 @@ export const parsePlacePriceLevel = (priceLevel: string) => {
 };
 
 export type Place = z.infer<typeof PlaceSchema>;
-export type PlaceGeoData = z.infer<typeof PlaceGeoDataSchema>;
+export type PlaceLocation = z.infer<typeof PlaceLocationSchema>;

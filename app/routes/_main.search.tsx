@@ -28,20 +28,18 @@ const validator = withZod(SearchSchema);
 export const action = async ({ request, context }: ActionFunctionArgs) => {
   const fieldValues = await validator.validate(await request.formData());
 
+  console.log(fieldValues);
+
   if (fieldValues.error) {
     console.error(fieldValues.error);
     return validationError(fieldValues.error);
   }
 
-  const { favoriteMealName, zipCode, latitude, longitude } = fieldValues.data;
+  const { favoriteMealName, address, coordinates } = fieldValues.data;
 
-  const coordinates = {
-    latitude: parseFloat(latitude),
-    longitude: parseFloat(longitude),
-  };
-  const location = { zipCode, coordinates };
-
-  const key = await createSearchJob(context, favoriteMealName, location);
+  const key = await createSearchJob(context, favoriteMealName, address, {
+    coordinates,
+  });
 
   return redirect(`/search?id=${key}`);
 };
@@ -103,9 +101,8 @@ export default function SearchPage() {
         className="flex flex-col gap-6"
       >
         <div className="rounded-lg border bg-base-200/30 p-4 md:p-6">
-          <div className="flex gap-4">
+          <div className="flex gap-4 [&>div]:flex-1">
             <Input
-              className="flex-1"
               name="favoriteMealName"
               label="Your favorite meal"
               type="text"
@@ -115,11 +112,11 @@ export default function SearchPage() {
               disabled={!!searchJob}
             />
             <AutocompletePlacesInput
-              name="zipCode"
-              label="Zip code"
+              name="address"
+              label="Where to eat"
               placeholder="080001"
               icon={<MapPinIcon className="form-input-icon" />}
-              defaultValue={searchJob?.input.zipCode}
+              defaultValue={searchJob?.input.address}
               disabled={!!searchJob}
               autocompleteApiKey={autocompleteApiKey}
             />
