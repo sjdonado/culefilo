@@ -4,6 +4,7 @@ import { Loader as GoogleMapsApiLoader } from '@googlemaps/js-api-loader';
 
 import { type InputProps, default as Input } from './Input';
 import type { Search } from '~/schemas/search';
+import { useField } from 'remix-validated-form';
 
 interface AutocompletePlacesInput extends InputProps {
   autocompleteApiKey: string;
@@ -23,6 +24,7 @@ export default function AutocompletePlacesInput({
   const [isAutocompleteInitialized, setIsAutocompleteInitialized] = useState(false);
 
   const [coordinates, setCoordinates] = useState<Search['coordinates']>();
+  const { error, getInputProps } = useField('coordinates');
 
   const initializeAutocomplete = useCallback(async () => {
     if (!AddressInputRef.current || isAutocompleteInitialized) {
@@ -46,15 +48,10 @@ export default function AutocompletePlacesInput({
     autocomplete.addListener('place_changed', () => {
       const place = autocomplete.getPlace();
 
-      const Address = place?.address_components?.find(component =>
-        component.types.includes('postal_code')
-      )?.long_name;
-
-      const parsedZipCode = Address?.match(/\d+/)?.[0];
       const latitude = place?.geometry?.location?.lat();
       const longitude = place?.geometry?.location?.lng();
 
-      if (parsedZipCode && latitude && longitude) {
+      if (latitude && longitude) {
         setCoordinates({ latitude, longitude });
         google.maps?.event.clearInstanceListeners(autocomplete);
       }
@@ -68,8 +65,9 @@ export default function AutocompletePlacesInput({
   });
 
   return (
-    <div>
+    <div className="flex flex-col">
       <Input
+        className="!mb-0"
         forwardedRef={AddressInputRef}
         name={name}
         label={label}
@@ -79,7 +77,12 @@ export default function AutocompletePlacesInput({
         defaultValue={defaultValue}
         disabled={disabled}
       />
-      <input type="hidden" name="coordinates" value={JSON.stringify(coordinates)} />
+      <input
+        type="hidden"
+        name="coordinates"
+        {...getInputProps({ value: JSON.stringify(coordinates) })}
+      />
+      {error && <span className="mt-1 text-xs text-red-500">{error}</span>}
     </div>
   );
 }

@@ -47,7 +47,7 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
   const jobId = url.searchParams.get('id');
 
   const searchJob = jobId ? await getKVRecord<SearchJobSerialized>(context, jobId) : null;
-  const autocompleteApiKey = context.cloudflare.env.PLACES_API_KEY;
+  const autocompleteApiKey = context.cloudflare.env.AUTOCOMPLETE_API_KEY;
 
   return { jobId, searchJob, autocompleteApiKey };
 };
@@ -65,7 +65,6 @@ export default function SearchPage() {
       const eventSource = new EventSource(`/search/job/${jobId}`);
 
       eventSource.onmessage = event => {
-        console.log('event', event);
         const [time, percentage, message] = event.data.split(',');
 
         if (message === DONE_JOB_MESSAGE) {
@@ -87,15 +86,13 @@ export default function SearchPage() {
 
   useEffect(() => {
     startSearchJob();
-  });
-
-  console.log('search', searchJob, 'jobState', jobState);
+  }, [startSearchJob]);
 
   return (
     <div className="flex flex-col gap-6">
       <ValidatedForm validator={validator} method="post" className="flex flex-col gap-6">
         <div className="rounded-lg border bg-base-200/30 p-4 md:p-6">
-          <div className="flex gap-4 [&>div]:flex-1">
+          <div className="flex flex-wrap gap-4 [&>div]:min-w-52 [&>div]:flex-1">
             <Input
               name="favoriteMealName"
               label="Meal/Dish/Food"

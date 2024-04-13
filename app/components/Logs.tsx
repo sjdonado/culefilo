@@ -17,7 +17,7 @@ export default function Logs({ logs }: LogsProps) {
 
   return (
     <div className="mb-4 flex flex-col justify-center gap-4">
-      <span className="divider" />
+      <hr />
       <div className="flex place-content-start items-center gap-2">
         <h3 className="cursor-pointer text-lg">Search logs</h3>
         {isExpanded && (
