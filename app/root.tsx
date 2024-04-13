@@ -14,7 +14,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         />
         <meta
           name="description"
-          content="Search for your favorite meal near you, quickly, enhanced by AI and for free."
+          content="Discover the top 3 restaurants serving your favorite meal near you. Just enter your craving and location in our free AI-powered app, and start your culinary adventure today!"
         />
 
         <meta property="og:title" content="Cule filo" />
@@ -23,10 +23,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <meta property="og:site_name" content="Cule filo" />
         <meta
           property="og:description"
-          content="Search for your favorite meal near you, quickly, enhanced by AI and for free."
+          content="Discover the top 3 restaurants serving your favorite meal near you. Just enter your craving and location in our free AI-powered app, and start your culinary adventure today!"
         />
 
-        <title>Cule filo</title>
+        <title>Cule filo - AI-powered meal search</title>
 
         <Meta />
         <Links />

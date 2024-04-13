@@ -1,13 +1,11 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from 'react';
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/20/solid';
 
 interface LogsProps {
   logs: string[];
 }
 
-export default function Logs({
-  logs,
-}: LogsProps) {
+export default function Logs({ logs }: LogsProps) {
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
   const logsRef = useRef<null | HTMLDivElement>(null);
 
@@ -19,13 +17,13 @@ export default function Logs({
 
   return (
     <div className="mb-4 flex flex-col justify-center gap-4">
-      <hr className="divider" />
-      <div className="flex flex-row place-content-start items-center gap-4">
+      <span className="divider" />
+      <div className="flex place-content-start items-center gap-2">
         <h3 className="text-lg">Search logs</h3>
         {isExpanded && (
           <ChevronUpIcon
             className="cursor-pointer"
-            onClick={(_e) => setIsExpanded(false)}
+            onClick={_e => setIsExpanded(false)}
             width="20"
             height="20"
           />
@@ -33,7 +31,7 @@ export default function Logs({
         {!isExpanded && (
           <ChevronDownIcon
             className="cursor-pointer"
-            onClick={(_e) => setIsExpanded(true)}
+            onClick={_e => setIsExpanded(true)}
             width="20"
             height="20"
           />
@@ -41,7 +39,7 @@ export default function Logs({
       </div>
       {isExpanded && (
         <div className="flex w-full flex-col items-start gap-2" ref={logsRef}>
-          {(logs).map(log => (
+          {logs.map(log => (
             <p key={log} className="text-sm text-gray-500">
               {log}
             </p>

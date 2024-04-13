@@ -46,8 +46,6 @@ export default function AutocompletePlacesInput({
     autocomplete.addListener('place_changed', () => {
       const place = autocomplete.getPlace();
 
-      console.log('place', place);
-
       const Address = place?.address_components?.find(component =>
         component.types.includes('postal_code')
       )?.long_name;
@@ -56,13 +54,10 @@ export default function AutocompletePlacesInput({
       const latitude = place?.geometry?.location?.lat();
       const longitude = place?.geometry?.location?.lng();
 
-      console.log({ latitude, longitude });
-
       if (parsedZipCode && latitude && longitude) {
         setCoordinates({ latitude, longitude });
         google.maps?.event.clearInstanceListeners(autocomplete);
       }
-      // }
     });
 
     setIsAutocompleteInitialized(true);

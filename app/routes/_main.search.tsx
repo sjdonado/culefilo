@@ -28,8 +28,6 @@ const validator = withZod(SearchSchema);
 export const action = async ({ request, context }: ActionFunctionArgs) => {
   const fieldValues = await validator.validate(await request.formData());
 
-  console.log(fieldValues);
-
   if (fieldValues.error) {
     console.error(fieldValues.error);
     return validationError(fieldValues.error);
@@ -67,6 +65,7 @@ export default function SearchPage() {
       const eventSource = new EventSource(`/search/job/${jobId}`);
 
       eventSource.onmessage = event => {
+        console.log('event', event);
         const [time, percentage, message] = event.data.split(',');
 
         if (message === DONE_JOB_MESSAGE) {
@@ -88,25 +87,20 @@ export default function SearchPage() {
 
   useEffect(() => {
     startSearchJob();
-  }, [startSearchJob]);
+  });
 
   console.log('search', searchJob, 'jobState', jobState);
 
   return (
     <div className="flex flex-col gap-6">
-      <ValidatedForm
-        id="searchForm"
-        validator={validator}
-        method="post"
-        className="flex flex-col gap-6"
-      >
+      <ValidatedForm validator={validator} method="post" className="flex flex-col gap-6">
         <div className="rounded-lg border bg-base-200/30 p-4 md:p-6">
           <div className="flex gap-4 [&>div]:flex-1">
             <Input
               name="favoriteMealName"
-              label="Your favorite meal"
+              label="Meal/Dish/Food"
               type="text"
-              placeholder="Burger with fries"
+              placeholder="Currywurst"
               icon={<MagnifyingGlassIcon className="form-input-icon" />}
               defaultValue={searchJob?.input.favoriteMealName}
               disabled={!!searchJob}
@@ -114,7 +108,7 @@ export default function SearchPage() {
             <AutocompletePlacesInput
               name="address"
               label="Where to eat"
-              placeholder="080001"
+              placeholder="Berlin, Germany"
               icon={<MapPinIcon className="form-input-icon" />}
               defaultValue={searchJob?.input.address}
               disabled={!!searchJob}
