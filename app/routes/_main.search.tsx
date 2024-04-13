@@ -6,7 +6,13 @@ import { ValidatedForm, validationError } from 'remix-validated-form';
 import { withZod } from '@remix-validated-form/with-zod';
 
 import type { LoaderFunctionArgs, ActionFunctionArgs } from '@remix-run/cloudflare';
-import { Link, redirect, useLoaderData, useRevalidator } from '@remix-run/react';
+import {
+  Link,
+  redirect,
+  useLoaderData,
+  useRevalidator,
+  useSearchParams,
+} from '@remix-run/react';
 
 import { DONE_JOB_MESSAGE, SearchJobState } from '~/constants/job';
 
@@ -53,6 +59,7 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
 };
 
 export default function SearchPage() {
+  const [searchParams] = useSearchParams();
   const revalidator = useRevalidator();
   const { jobId, searchJob, autocompleteApiKey } = useLoaderData<typeof loader>();
 
@@ -60,8 +67,13 @@ export default function SearchPage() {
     { time: string; percentage: string; message: string } | undefined
   >();
 
+  const retry = Boolean(searchParams.get('retry'));
+
   const startSearchJob = useCallback(async () => {
-    if (searchJob?.state === SearchJobState.Created) {
+    if (
+      searchJob?.state === SearchJobState.Created ||
+      (retry && searchJob?.state === SearchJobState.Failure)
+    ) {
       const eventSource = new EventSource(`/search/job/${jobId}`);
 
       eventSource.onmessage = event => {
@@ -82,7 +94,7 @@ export default function SearchPage() {
         eventSource.close();
       };
     }
-  }, [jobId, searchJob, revalidator]);
+  }, [jobId, searchJob, revalidator, retry]);
 
   useEffect(() => {
     startSearchJob();
@@ -127,8 +139,24 @@ export default function SearchPage() {
           <p className="text-center text-sm">{jobState.message}</p>
         </div>
       )}
-      {searchJob?.state === SearchJobState.Failure && (
-        <p className="text-center text-sm">Something went wrong, please try again</p>
+      {searchJob?.state === SearchJobState.Failure && !retry && (
+        <div className="my-12 flex flex-col items-center justify-center gap-6">
+          <div className="flex flex-col gap-2">
+            <h4 className="text-center text-sm">
+              Oops! It seems like something went wrong
+            </h4>
+            <p className="text-center text-xs">
+              Click the button below to retry or resume the search from the last
+              checkpoint.
+            </p>
+          </div>
+          <Link
+            to={`/search?id=${jobId}&retry=1`}
+            className="btn btn-primary btn-sm !h-10 rounded-lg text-base-100"
+          >
+            Retry
+          </Link>
+        </div>
       )}
       {searchJob?.state === SearchJobState.Success && (
         <div className="flex flex-col gap-4">
@@ -140,9 +168,7 @@ export default function SearchPage() {
           ))}
         </div>
       )}
-      {[SearchJobState.Success, SearchJobState.Failure].includes(
-        searchJob?.state as SearchJobState
-      ) && (
+      {[SearchJobState.Success].includes(searchJob?.state as SearchJobState) && (
         <Link to="/" className="link !h-10 w-full text-center">
           Go to new search
         </Link>
