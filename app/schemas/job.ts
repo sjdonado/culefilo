@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { ALL_SEARCH_JOB_STATES } from '~/constants/job';
+import { ALL_SEARCH_JOB_STAGES, ALL_SEARCH_JOB_STATES } from '~/constants/job';
 
 import { SearchSchema } from './search';
 import { PlaceLocationSchema, PlaceParsedSchema, PlaceSchema } from './place';
@@ -12,6 +12,10 @@ export const SearchJobSchema = z.object({
   }),
   location: PlaceLocationSchema,
   state: z.enum(ALL_SEARCH_JOB_STATES),
+  stage: z.enum(ALL_SEARCH_JOB_STAGES),
+  placesFetched: z.record(z.any()),
+  descriptions: z.array(z.object({ id: z.string(), description: z.string() })),
+  thumbnails: z.array(z.object({ id: z.string(), thumbnail: z.string() })),
   places: z.array(PlaceSchema).optional(),
   logs: z.array(z.string()).optional(),
   createdAt: z.number(),

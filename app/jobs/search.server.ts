@@ -1,7 +1,7 @@
 import type { AppLoadContext } from '@remix-run/cloudflare';
-import { DONE_JOB_MESSAGE, SearchJobState } from '~/constants/job';
+import { DONE_JOB_MESSAGE, SearchJobStage, SearchJobState } from '~/constants/job';
 
-import type { SearchJob } from '~/schemas/job';
+import type { SearchJob, SearchJobParsed } from '~/schemas/job';
 import { SearchJobParsedSchema } from '~/schemas/job';
 import type { PlaceLocation } from '~/schemas/place';
 
@@ -34,7 +34,11 @@ export async function createSearchJob(
     },
     location,
     state: SearchJobState.Created,
+    stage: SearchJobStage.Initial,
     createdAt: Date.now(),
+    placesFetched: {},
+    descriptions: [],
+    thumbnails: [],
   });
 
   await putKVRecord(context, key, initState);
@@ -50,10 +54,10 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
   const encodeMessage = (message: string, percentage: number, time = Date.now()) =>
     encoder.encode(`data: ${time},${(percentage * 100).toFixed(1)},${message}\n\n`);
 
-  // if job has been executed
-  if (job.state !== SearchJobState.Created) {
+  // if job has finished (if has failed to retry is allowed)
+  if (job.state === SearchJobState.Success) {
     console.log(
-      `[${startOrCheckSearchJob.name}] (${key}) is already running or finished`
+      `[${startOrCheckSearchJob.name}] (${key}) finished with status ${job.state} (${job.stage})`
     );
 
     return encodeMessage(DONE_JOB_MESSAGE, 1);
@@ -61,6 +65,7 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
 
   const stream = new ReadableStream({
     async start(controller) {
+      let inMemoryJob: SearchJobParsed = job;
       const logs: string[] = [];
       let progress = 0;
 
@@ -73,229 +78,255 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
 
       const increaseProgress = (increment: number) => (progress += increment);
 
+      const updateSearchJobState = async (newSearchJob: SearchJobParsed) => {
+        inMemoryJob = newSearchJob;
+        await putKVRecord(context, key, newSearchJob);
+      };
+
       try {
-        console.log(`[${startOrCheckSearchJob.name}] (${key}) started`);
-        sendEvent('Search started...', progress);
+        if (inMemoryJob.stage === SearchJobStage.Initial) {
+          console.log(`[${startOrCheckSearchJob.name}] (${key}) started`);
+          sendEvent('Search started...', progress);
 
-        await putKVRecord(
-          context,
-          key,
-          SearchJobParsedSchema.parse({
-            ...job,
-            state: SearchJobState.Running,
-          })
-        );
-
-        const allPlaces = new Map<string, PlaceAPIResponse['places'][0]>();
-
-        const originalQuery = job.input.favoriteMealName;
-        const coordinates = job.location.coordinates;
-
-        async function searchAndAppendToAllPlaces(query: string, baseProgress = 0.01) {
-          console.log(
-            `[${startOrCheckSearchJob.name}] (${key}) places search - query ${query}`
-          );
-          sendEvent(
-            `Looking for nearby places with "${query}"...`,
-            increaseProgress(baseProgress)
-          );
-
-          const places = await getPlacesByTextAndCoordinates(context, query, coordinates);
-
-          (places ?? []).forEach(place => {
-            allPlaces.set(place.id, place);
-          });
-        }
-
-        await searchAndAppendToAllPlaces(originalQuery, 0.1);
-
-        if (allPlaces.size < 3) {
-          console.log(`[${startOrCheckSearchJob.name}] (${key}) LLM suggestions started`);
-          sendEvent('Looking for suggestions...', increaseProgress(0.2));
-
-          const response = await runLLMRequest(
-            context,
-            `Other names for this meal: "${originalQuery}"`,
-            'return each name in quotes, omit explanations'
-          );
-
-          const suggestionsList =
-            response.match(/"([^"]+)"/g)?.map(item => item.replace(/"/g, '')) ?? [];
-
-          // remove duplicates
-          const suggestions = Array.from(
-            new Set(
-              suggestionsList.map(s => s.toLowerCase()).filter(s => s !== originalQuery)
-            )
-          );
-
-          await putKVRecord(
-            context,
-            key,
+          await updateSearchJobState(
             SearchJobParsedSchema.parse({
-              ...job,
-              suggestions,
+              ...inMemoryJob,
+              state: SearchJobState.Running,
             })
           );
 
-          if (suggestions.length === 0) {
-            console.error(
-              `[${startOrCheckSearchJob.name}] No suggestions found for ${originalQuery}: ${response}`
+          const placesFetched: Record<string, PlaceAPIResponse['places'][0]> = {};
+
+          const originalQuery = inMemoryJob.input.favoriteMealName;
+          const coordinates = inMemoryJob.location.coordinates;
+
+          async function searchAndAppendToAllPlaces(query: string, baseProgress = 0.01) {
+            console.log(
+              `[${startOrCheckSearchJob.name}] (${key}) places search - query ${query}`
             );
+            sendEvent(
+              `Looking for nearby places with "${query}"...`,
+              increaseProgress(baseProgress)
+            );
+
+            const places = await getPlacesByTextAndCoordinates(
+              context,
+              query,
+              coordinates
+            );
+
+            (places ?? []).forEach(place => {
+              placesFetched[place.id] = place;
+            });
           }
 
-          console.log(
-            `[${startOrCheckSearchJob.name}] (${key}) LLM suggestions: ${suggestions}`
-          );
+          await searchAndAppendToAllPlaces(originalQuery, 0.1);
 
-          while (allPlaces.size < 3 && suggestions.length > 0) {
-            const query = suggestions.shift();
-            await searchAndAppendToAllPlaces(query!);
-          }
-        }
-
-        if (allPlaces.size >= 3) {
-          sendEvent(
-            'Summarizing results...',
-            increaseProgress(progress < 0.4 ? 0.4 - progress : 0)
-          );
-        }
-
-        const topPlaces = Array.from(allPlaces.values()).slice(0, 3);
-
-        const placesDescriptionsPromise = Promise.all(
-          topPlaces.map(async place => {
-            const id = place.id;
-
-            sendEvent(
-              `Summarizing "${place.displayName.text}"...`,
-              increaseProgress(0.01)
+          if (Object.keys(placesFetched).length < 3) {
+            console.log(
+              `[${startOrCheckSearchJob.name}] (${key}) LLM suggestions started`
             );
 
-            const reviews = (place.reviews ?? []).map(review => review.text.text);
-
-            if (!reviews.length) {
-              return;
-            }
-
-            const description = await runSummarizationRequest(context, reviews);
-
-            return {
-              id,
-              description,
-            };
-          })
-        );
-
-        const placesThumbnailsPromise = Promise.all(
-          topPlaces.map(async place => {
-            const photosWithCaptions = new Map<
-              number,
-              { image: string; caption: string }
-            >();
-
-            sendEvent(
-              `Fetching photos for "${place.displayName.text}"...`,
-              increaseProgress(progress < 0.6 ? 0.6 - progress : 0)
-            );
-
-            await Promise.all(
-              (place.photos ?? []).slice(0, 5).map(async (photo, photoIdx) => {
-                const binary = await downloadPlacePhoto(context, photo.name);
-                const caption = await runImageToTextRequest(context, binary);
-
-                sendEvent(
-                  `Image #${photoIdx + 1} for "${place.displayName.text}" to text...`,
-                  increaseProgress(0.01)
-                );
-
-                photosWithCaptions.set(photoIdx, {
-                  image: `data:image/jpeg;base64,${btoa(
-                    String.fromCharCode.apply(null, binary)
-                  )}`,
-                  caption,
-                });
-              })
-            );
-
-            if (photosWithCaptions.size === 0) {
-              return;
-            }
-
-            const captionsList = Array.from(photosWithCaptions.entries())
-              .map(([idx, { caption }]) => {
-                return `${idx + 1}. ${caption}`;
-              })
-              .join('\n');
-
-            sendEvent(
-              `Choosing thumbnail for "${place.displayName.text}"...`,
-              increaseProgress(0.05)
-            );
+            sendEvent('Looking for suggestions...', increaseProgress(0.2));
 
             const response = await runLLMRequest(
               context,
-              `Which of these captions best describes "${place.displayName.text}"? '${captionsList}'`,
-              'only return the number of the best caption, omit explanations'
+              `Other names for this meal: "${originalQuery}"`,
+              'return each name in quotes, omit explanations'
             );
 
-            const choosedCaption = parseInt(response.match(/\d+/)?.[0] ?? '1') - 1;
-            const thumbnail = photosWithCaptions.get(choosedCaption)?.image;
+            const suggestionsList =
+              response.match(/"([^"]+)"/g)?.map(item => item.replace(/"/g, '')) ?? [];
 
-            return {
-              id: place.id,
-              thumbnail,
-            };
-          })
-        );
+            // remove duplicates
+            const suggestions = Array.from(
+              new Set(
+                suggestionsList.map(s => s.toLowerCase()).filter(s => s !== originalQuery)
+              )
+            );
 
-        const [placesDescriptions, placesThumbnails] = await Promise.all([
-          placesDescriptionsPromise,
-          placesThumbnailsPromise,
-        ]);
+            if (suggestions.length === 0) {
+              console.error(
+                `[${startOrCheckSearchJob.name}] No suggestions found for ${originalQuery}: ${response}`
+              );
+            }
 
-        sendEvent(
-          `Almost done! Parsing results...`,
-          increaseProgress(progress < 0.8 ? 0.8 - progress : 0)
-        );
+            console.log(
+              `[${startOrCheckSearchJob.name}] (${key}) LLM suggestions: ${suggestions}`
+            );
 
-        const places = topPlaces.map(place => {
-          const id = place.id;
-          const name = place.displayName.text;
-          const address = place.formattedAddress;
-          const url = place.googleMapsUri;
+            while (Object.keys(placesFetched).length < 3 && suggestions.length > 0) {
+              const query = suggestions.shift();
+              await searchAndAppendToAllPlaces(query!);
+            }
+          }
 
-          const description =
-            placesDescriptions.find(p => p?.id === id)?.description ?? null;
+          await updateSearchJobState(
+            SearchJobParsedSchema.parse({
+              ...inMemoryJob,
+              stage: SearchJobStage.PlacesFetched,
+              placesFetched,
+            })
+          );
+        }
 
-          const thumbnail = placesThumbnails.find(p => p?.id === id)?.thumbnail ?? null;
+        if (inMemoryJob.stage === SearchJobStage.PlacesFetched) {
+          if (Object.keys(inMemoryJob.placesFetched).length >= 3) {
+            sendEvent(
+              'Summarizing results...',
+              increaseProgress(progress < 0.4 ? 0.4 - progress : 0)
+            );
+          }
 
-          return {
-            id,
-            name,
-            description,
-            address,
-            url,
-            thumbnail,
-            rating: { number: place.rating, count: place.userRatingCount },
-            price: place.priceLevel,
-          };
-        });
+          const topPlaces = Object.values(inMemoryJob.placesFetched).slice(0, 3);
 
-        const duration = ((Date.now() - job.createdAt) / 1000).toFixed(1);
+          const placesDescriptionsPromise = Promise.all(
+            topPlaces.map(async (place: PlaceAPIResponse['places'][0]) => {
+              const id = place.id;
 
-        sendEvent(`Search completed successfully in ${duration}s`, 0.99);
+              sendEvent(
+                `Summarizing "${place.displayName.text}"...`,
+                increaseProgress(0.01)
+              );
 
-        await putKVRecord(
-          context,
-          key,
-          SearchJobParsedSchema.parse({
-            ...job,
-            state: SearchJobState.Success,
-            places,
-            logs,
-          })
-        );
+              const reviews = (place.reviews ?? []).map(review => review.text.text);
+
+              if (!reviews.length) {
+                return;
+              }
+
+              const description = await runSummarizationRequest(context, reviews);
+
+              return {
+                id,
+                description,
+              };
+            })
+          );
+
+          const placesThumbnailsPromise = Promise.all(
+            topPlaces.map(async (place: PlaceAPIResponse['places'][0]) => {
+              const photosWithCaptions = new Map<
+                number,
+                { image: string; caption: string }
+              >();
+
+              sendEvent(
+                `Fetching photos for "${place.displayName.text}"...`,
+                increaseProgress(progress < 0.6 ? 0.6 - progress : 0)
+              );
+
+              await Promise.all(
+                (place.photos ?? []).slice(0, 5).map(async (photo, photoIdx) => {
+                  const binary = await downloadPlacePhoto(context, photo.name);
+                  const caption = await runImageToTextRequest(context, binary);
+
+                  sendEvent(
+                    `Image #${photoIdx + 1} for "${place.displayName.text}" to text...`,
+                    increaseProgress(0.01)
+                  );
+
+                  photosWithCaptions.set(photoIdx, {
+                    image: `data:image/jpeg;base64,${btoa(
+                      String.fromCharCode.apply(null, binary)
+                    )}`,
+                    caption,
+                  });
+                })
+              );
+
+              if (photosWithCaptions.size === 0) {
+                return;
+              }
+
+              const captionsList = Array.from(photosWithCaptions.entries())
+                .map(([idx, { caption }]) => {
+                  return `${idx + 1}. ${caption}`;
+                })
+                .join('\n');
+
+              sendEvent(
+                `Choosing thumbnail for "${place.displayName.text}"...`,
+                increaseProgress(0.05)
+              );
+
+              const response = await runLLMRequest(
+                context,
+                `Which of these captions best describes "${place.displayName.text}"? '${captionsList}'`,
+                'only return the number of the best caption, omit explanations'
+              );
+
+              const choosedCaption = parseInt(response.match(/\d+/)?.[0] ?? '1') - 1;
+              const thumbnail = photosWithCaptions.get(choosedCaption)?.image;
+
+              return {
+                id: place.id,
+                thumbnail,
+              };
+            })
+          );
+
+          const [placesDescriptions, placesThumbnails] = await Promise.all([
+            placesDescriptionsPromise,
+            placesThumbnailsPromise,
+          ]);
+
+          sendEvent(
+            `Almost done! Parsing results...`,
+            increaseProgress(progress < 0.8 ? 0.8 - progress : 0)
+          );
+
+          await updateSearchJobState(
+            SearchJobParsedSchema.parse({
+              ...inMemoryJob,
+              state: SearchJobState.Running,
+              stage: SearchJobStage.Parsing,
+              descriptions: placesDescriptions,
+              thumbnails: placesThumbnails,
+            })
+          );
+        }
+
+        if (inMemoryJob.stage === SearchJobStage.Parsing) {
+          const places = Object.values(inMemoryJob.placesFetched)
+            .slice(0, 3)
+            .map(place => {
+              const id = place.id;
+              const name = place.displayName.text;
+              const address = place.formattedAddress;
+              const url = place.googleMapsUri;
+
+              const description =
+                inMemoryJob.descriptions.find(p => p?.id === id)?.description ?? null;
+
+              const thumbnail =
+                inMemoryJob.thumbnails.find(p => p?.id === id)?.thumbnail ?? null;
+
+              return {
+                id,
+                name,
+                description,
+                address,
+                url,
+                thumbnail,
+                rating: { number: place.rating, count: place.userRatingCount },
+                price: place.priceLevel,
+              };
+            });
+
+          const duration = ((Date.now() - inMemoryJob.createdAt) / 1000).toFixed(1);
+
+          sendEvent(`Search completed successfully in ${duration}s`, 0.99);
+
+          await updateSearchJobState(
+            SearchJobParsedSchema.parse({
+              ...inMemoryJob,
+              state: SearchJobState.Success,
+              places,
+              logs,
+            })
+          );
+        }
 
         sendEvent(DONE_JOB_MESSAGE, 1);
         console.log(`[${startOrCheckSearchJob.name}] (${key}) finished`);
@@ -303,7 +334,7 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
         console.error(`[${startOrCheckSearchJob.name}] Job ${key} failed`, error);
 
         await putKVRecord(context, key, {
-          ...job,
+          ...inMemoryJob,
           state: SearchJobState.Failure,
           logs,
         });
