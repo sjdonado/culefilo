@@ -2,12 +2,12 @@
 // by running `wrangler types`
 
 interface Env {
-	CULEFILO_KV: KVNamespace;
-	ENVIRONMENT: string;
-	PLACES_API_URL: string;
-	OPENDATASOFT_API_URL: string;
-	BUGSNAG_API_KEY: string;
-	PLACES_API_KEY: string;
-	AUTOCOMPLETE_API_KEY: string;
-	AI: unknown;
+  CULEFILO_KV: KVNamespace;
+  ENVIRONMENT: string;
+  PLACES_API_URL: string;
+  OPENDATASOFT_API_URL: string;
+  BUGSNAG_API_KEY: string;
+  PLACES_API_KEY: string;
+  AUTOCOMPLETE_API_KEY: string;
+  AI: unknown;
 }
