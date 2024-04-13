@@ -14,19 +14,22 @@ export function Layout({ children }: { children: React.ReactNode }) {
         />
         <meta
           name="description"
-          content="Discover the top 3 restaurants serving your favorite meal near you. Just enter your craving and location in our free AI-powered app, and start your culinary adventure today!"
+          content="Discover the top 3 restaurants serving your favorite food near you. Just enter your craving and location in our free AI-powered app, and start your culinary adventure today!"
         />
 
-        <meta property="og:title" content="Cule filo" />
+        <meta
+          property="og:title"
+          content="Cule filo - AI-powered restaurant search engine"
+        />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://culefilo.pages.dev" />
         <meta property="og:site_name" content="Cule filo" />
         <meta
           property="og:description"
-          content="Discover the top 3 restaurants serving your favorite meal near you. Just enter your craving and location in our free AI-powered app, and start your culinary adventure today!"
+          content="Discover the top 3 restaurants serving your favorite food near you. Just enter your craving and location in our free AI-powered app, and start your culinary adventure today!"
         />
 
-        <title>Cule filo - AI-powered meal search</title>
+        <title>Cule filo - AI-powered restaurant search engine</title>
 
         <Meta />
         <Links />
