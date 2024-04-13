@@ -1,21 +1,15 @@
 import { useRef, useState, useEffect } from 'react';
 import { useControlField } from 'remix-validated-form';
 
-import {
-  initializeAutocomplete,
-  cleanUpAutocomplete,
-} from '~/utils/autocomplete.client';
+import { initializeAutocomplete, cleanUpAutocomplete } from '~/utils/autocomplete.client';
 import { type InputProps, default as Input } from './Input';
 
 interface AutocompletePlacesInput extends InputProps {
   placesApiKey: string;
-  onCoordinatesChange:  (coordinates: {
-    latitude: number;
-    longitude: number;
-  }) => void;
+  onCoordinatesChange: (coordinates: { latitude: number; longitude: number }) => void;
 }
 
-export default function AutocompletePlacesInput ({
+export default function AutocompletePlacesInput({
   name,
   label,
   placeholder,
@@ -24,30 +18,22 @@ export default function AutocompletePlacesInput ({
   icon,
   disabled,
   onCoordinatesChange,
-  ...rest
 }: AutocompletePlacesInput) {
   const [zipCode, setZipCode] = useState(defaultValue);
-  const [
-    isAutocompleteInitialized,
-    setIsAutocompleteInitialized,
-  ] = useState<boolean>(false);
+  const [isAutocompleteInitialized, setIsAutocompleteInitialized] =
+    useState<boolean>(false);
 
-  const [latitude, setLatitude] =
-    useControlField<number | undefined>('latitude', 'searchForm');
-  const [longitude, setLongitude] =
-    useControlField<number | undefined>('longitude', 'searchForm');
+  const [latitude, setLatitude] = useState<number | undefined>();
+  const [longitude, setLongitude] = useState<number | undefined>();
 
   const zipCodeInputRef = useRef(null);
 
-  const onPlaceChangeHandler = (
-    autocomplete: google.maps.places.Autocomplete,
-  ) => {
+  const onPlaceChangeHandler = (autocomplete: google.maps.places.Autocomplete) => {
     return () => {
       const place = autocomplete.getPlace();
-      const parsedZipCode = place
-        ?.address_components
-        ?.find((component) => component.types.includes('postal_code'))
-        ?.long_name;
+      const parsedZipCode = place?.address_components?.find(component =>
+        component.types.includes('postal_code')
+      )?.long_name;
       const onlyNumbersRegExp = /^\d+$/;
       if (parsedZipCode && onlyNumbersRegExp.test(parsedZipCode)) {
         const latitude = place?.geometry?.location?.lat();
@@ -64,10 +50,10 @@ export default function AutocompletePlacesInput ({
         }
       }
     };
-  }
+  };
 
   useEffect(() => {
-    const loadAutocomplete = async() => {
+    const loadAutocomplete = async () => {
       if (zipCodeInputRef.current) {
         if (!isAutocompleteInitialized) {
           await initializeAutocomplete({
@@ -78,7 +64,7 @@ export default function AutocompletePlacesInput ({
           setIsAutocompleteInitialized(true);
         }
       }
-    }
+    };
 
     loadAutocomplete();
   });
@@ -86,29 +72,29 @@ export default function AutocompletePlacesInput ({
   return (
     <div>
       <Input
-          name={name}
-          label={label}
-          type="number"
-          placeholder="080001"
-          icon={icon}
-          defaultValue={defaultValue}
-          disabled={disabled}
-          onChange={(e) => setZipCode(e.target.value)}
-          value={zipCode}
-          forwardedRef={zipCodeInputRef}
-        />
-        <input
-          type="hidden"
-          name="latitude"
-          value={latitude}
-          onChange={(e) => setLatitude(parseFloat(e.target.value))}
-        />
-        <input
-          type="hidden"
-          name="longitude"
-          value={longitude}
-          onChange={(e) => setLongitude(parseFloat(e.target.value))}
-        />
+        forwardedRef={zipCodeInputRef}
+        name={name}
+        label={label}
+        type="number"
+        placeholder={placeholder}
+        icon={icon}
+        defaultValue={defaultValue}
+        disabled={disabled}
+        onChange={e => setZipCode(e.target.value)}
+        value={zipCode}
+      />
+      <input
+        type="hidden"
+        name="latitude"
+        value={latitude}
+        onChange={e => setLatitude(parseFloat(e.target.value))}
+      />
+      <input
+        type="hidden"
+        name="longitude"
+        value={longitude}
+        onChange={e => setLongitude(parseFloat(e.target.value))}
+      />
     </div>
   );
 }
