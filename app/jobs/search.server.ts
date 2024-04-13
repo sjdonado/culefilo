@@ -1,5 +1,5 @@
 import type { AppLoadContext } from '@remix-run/cloudflare';
-import { DONE_JOB_MESSAGE, SearchJobState } from '~/constants/job';
+import { DONE_JOB_MESSAGE, SearchJobStage, SearchJobState } from '~/constants/job';
 
 import type { SearchJob, SearchJobParsed } from '~/schemas/job';
 import { SearchJobParsedSchema } from '~/schemas/job';
@@ -51,9 +51,9 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
     encoder.encode(`data: ${time},${(percentage * 100).toFixed(1)},${message}\n\n`);
 
   // if job has been executed
-  if (job.state !== SearchJobState.Created) {
+  if ([SearchJobState.Success, SearchJobState.Failure].includes(job.state)) {
     console.log(
-      `[${startOrCheckSearchJob.name}] (${key}) is already running or finished`
+      `[${startOrCheckSearchJob.name}] (${key}) finished with status ${job.state} (${job.stage})`
     );
 
     return encodeMessage(DONE_JOB_MESSAGE, 1);
@@ -61,7 +61,7 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
 
   const stream = new ReadableStream({
     async start(controller) {
-      const searchJob = {};
+      const searchJob: Partial<SearchJob> = {};
       const logs: string[] = [];
       let progress = 0;
 
@@ -74,101 +74,108 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
 
       const increaseProgress = (increment: number) => (progress += increment);
 
-      const updateSearchJobState = async (payload: Partial<SearchJobParsed>) => {
-        Object.assign(
-          searchJob,
-          SearchJobParsedSchema.parse({
-            ...searchJob,
-            ...payload,
-          })
-        );
+      const updateSearchJobState = async (payload: SearchJobParsed) => {
+        Object.assign(searchJob, payload);
         await putKVRecord(context, key, searchJob);
       };
 
       try {
-        console.log(`[${startOrCheckSearchJob.name}] (${key}) started`);
-        sendEvent('Search started...', progress);
+        if (!job.stage || job.stage === SearchJobStage.Initial) {
+          console.log(`[${startOrCheckSearchJob.name}] (${key}) started`);
+          sendEvent('Search started...', progress);
 
-        await updateSearchJobState({
-          state: SearchJobState.Running,
-          stage: SearchJobStage.Initial,
-        });
-
-        const allPlaces = new Map<string, PlaceAPIResponse['places'][0]>();
-
-        const originalQuery = job.input.favoriteMealName;
-        const coordinates = job.location.coordinates;
-
-        async function searchAndAppendToAllPlaces(query: string, baseProgress = 0.01) {
-          console.log(
-            `[${startOrCheckSearchJob.name}] (${key}) places search - query ${query}`
-          );
-          sendEvent(
-            `Looking for nearby places with "${query}"...`,
-            increaseProgress(baseProgress)
+          await updateSearchJobState(
+            SearchJobParsedSchema.parse({
+              ...job,
+              state: SearchJobState.Running,
+              stage: SearchJobStage.Initial,
+              allPlaces: {},
+            })
           );
 
-          const places = await getPlacesByTextAndCoordinates(context, query, coordinates);
+          const allPlaces: Record<string, PlaceAPIResponse['places'][0]> = {};
 
-          (places ?? []).forEach(place => {
-            allPlaces.set(place.id, place);
-          });
-        }
+          const originalQuery = job.input.favoriteMealName;
+          const coordinates = job.location.coordinates;
 
-        await searchAndAppendToAllPlaces(originalQuery, 0.1);
-
-        if (allPlaces.size < 3) {
-          console.log(`[${startOrCheckSearchJob.name}] (${key}) LLM suggestions started`);
-
-          sendEvent('Looking for suggestions...', increaseProgress(0.2));
-          await updateSearchJobState({
-            stage: SearchJobStage.Suggestions,
-          });
-
-          const response = await runLLMRequest(
-            context,
-            `Other names for this meal: "${originalQuery}"`,
-            'return each name in quotes, omit explanations'
-          );
-
-          const suggestionsList =
-            response.match(/"([^"]+)"/g)?.map(item => item.replace(/"/g, '')) ?? [];
-
-          // remove duplicates
-          const suggestions = Array.from(
-            new Set(
-              suggestionsList.map(s => s.toLowerCase()).filter(s => s !== originalQuery)
-            )
-          );
-
-          if (suggestions.length === 0) {
-            console.error(
-              `[${startOrCheckSearchJob.name}] No suggestions found for ${originalQuery}: ${response}`
+          async function searchAndAppendToAllPlaces(query: string, baseProgress = 0.01) {
+            console.log(
+              `[${startOrCheckSearchJob.name}] (${key}) places search - query ${query}`
             );
+            sendEvent(
+              `Looking for nearby places with "${query}"...`,
+              increaseProgress(baseProgress)
+            );
+
+            const places = await getPlacesByTextAndCoordinates(
+              context,
+              query,
+              coordinates
+            );
+
+            (places ?? []).forEach(place => {
+              allPlaces[place.id] = place;
+            });
           }
 
-          console.log(
-            `[${startOrCheckSearchJob.name}] (${key}) LLM suggestions: ${suggestions}`
+          await searchAndAppendToAllPlaces(originalQuery, 0.1);
+
+          if (Object.keys(allPlaces).length < 3) {
+            console.log(
+              `[${startOrCheckSearchJob.name}] (${key}) LLM suggestions started`
+            );
+
+            sendEvent('Looking for suggestions...', increaseProgress(0.2));
+
+            const response = await runLLMRequest(
+              context,
+              `Other names for this meal: "${originalQuery}"`,
+              'return each name in quotes, omit explanations'
+            );
+
+            const suggestionsList =
+              response.match(/"([^"]+)"/g)?.map(item => item.replace(/"/g, '')) ?? [];
+
+            // remove duplicates
+            const suggestions = Array.from(
+              new Set(
+                suggestionsList.map(s => s.toLowerCase()).filter(s => s !== originalQuery)
+              )
+            );
+
+            if (suggestions.length === 0) {
+              console.error(
+                `[${startOrCheckSearchJob.name}] No suggestions found for ${originalQuery}: ${response}`
+              );
+            }
+
+            console.log(
+              `[${startOrCheckSearchJob.name}] (${key}) LLM suggestions: ${suggestions}`
+            );
+
+            while (Object.keys(allPlaces).length < 3 && suggestions.length > 0) {
+              const query = suggestions.shift();
+              await searchAndAppendToAllPlaces(query!);
+            }
+          }
+
+          await updateSearchJobState(
+            SearchJobParsedSchema.parse({
+              ...job,
+              stage: SearchJobStage.PlacesFetched,
+              allPlaces,
+            })
           );
-
-          while (allPlaces.size < 3 && suggestions.length > 0) {
-            const query = suggestions.shift();
-            await searchAndAppendToAllPlaces(query!);
-          }
         }
 
-        if (allPlaces.size >= 3) {
+        if (Object.keys(job.allPlaces).length >= 3) {
           sendEvent(
             'Summarizing results...',
             increaseProgress(progress < 0.4 ? 0.4 - progress : 0)
           );
         }
 
-        await updateSearchJobState({
-          stage: SearchJobStage.Summarization,
-        });
-
-        const topPlaces = Array.from(allPlaces.values()).slice(0, 3);
+        const topPlaces = Object.values(job.allPlaces).slice(0, 3);
 
         const placesDescriptionsPromise = Promise.all(
           topPlaces.map(async place => {
@@ -266,9 +273,15 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
           increaseProgress(progress < 0.8 ? 0.8 - progress : 0)
         );
 
-        await updateSearchJobState({
-          stage: SearchJobStage.Parsing,
-        });
+        await updateSearchJobState(
+          SearchJobParsedSchema.parse({
+            ...job,
+            state: SearchJobState.Running,
+            stage: SearchJobStage.Parsing,
+            descriptions: placesDescriptions,
+            thumbnails: placesThumbnails,
+          })
+        );
 
         const places = topPlaces.map(place => {
           const id = place.id;
@@ -297,11 +310,14 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
 
         sendEvent(`Search completed successfully in ${duration}s`, 0.99);
 
-        await updateSearchJobState({
-          state: SearchJobState.Success,
-          places,
-          logs,
-        });
+        await updateSearchJobState(
+          SearchJobParsedSchema.parse({
+            ...job,
+            state: SearchJobState.Success,
+            places,
+            logs,
+          })
+        );
 
         sendEvent(DONE_JOB_MESSAGE, 1);
         console.log(`[${startOrCheckSearchJob.name}] (${key}) finished`);

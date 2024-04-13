@@ -12,8 +12,7 @@ export const ALL_SEARCH_JOB_STATES = Object.values(SearchJobState) as [
 
 export enum SearchJobStage {
   Initial = 'initial',
-  Suggestions = 'suggestions',
-  Summarization = 'summarization',
+  PlacesFetched = 'placesFetched',
   Parsing = 'parsing',
 }
 
