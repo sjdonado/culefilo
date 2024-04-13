@@ -31,11 +31,11 @@ export default function Input({
       <div className="relative mt-2 rounded-md">
         <div className="relative">
           <input
+            ref={forwardedRef}
             className={clsx(
               'peer input input-sm input-bordered !h-10 w-full rounded-md !pl-9',
               error && 'input-error'
             )}
-            ref={forwardedRef}
             {...rest}
             {...getInputProps({
               id: name,

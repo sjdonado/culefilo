@@ -1,72 +1,58 @@
-import { useRef, useState, useEffect } from 'react';
-import { useControlField } from 'remix-validated-form';
+import { useRef, useState, useEffect, useCallback } from 'react';
 
 import { initializeAutocomplete, cleanUpAutocomplete } from '~/utils/autocomplete.client';
 import { type InputProps, default as Input } from './Input';
 
 interface AutocompletePlacesInput extends InputProps {
-  placesApiKey: string;
-  onCoordinatesChange: (coordinates: { latitude: number; longitude: number }) => void;
+  autocompleteApiKey: string;
 }
 
 export default function AutocompletePlacesInput({
   name,
   label,
   placeholder,
-  placesApiKey,
+  autocompleteApiKey,
   defaultValue,
   icon,
   disabled,
-  onCoordinatesChange,
 }: AutocompletePlacesInput) {
-  const [zipCode, setZipCode] = useState(defaultValue);
-  const [isAutocompleteInitialized, setIsAutocompleteInitialized] =
-    useState<boolean>(false);
-
-  const [latitude, setLatitude] = useState<number | undefined>();
-  const [longitude, setLongitude] = useState<number | undefined>();
-
   const zipCodeInputRef = useRef(null);
 
-  const onPlaceChangeHandler = (autocomplete: google.maps.places.Autocomplete) => {
-    return () => {
-      const place = autocomplete.getPlace();
-      const parsedZipCode = place?.address_components?.find(component =>
-        component.types.includes('postal_code')
-      )?.long_name;
-      const onlyNumbersRegExp = /^\d+$/;
-      if (parsedZipCode && onlyNumbersRegExp.test(parsedZipCode)) {
-        const latitude = place?.geometry?.location?.lat();
-        const longitude = place?.geometry?.location?.lng();
-        if (latitude && longitude) {
-          setLatitude(latitude);
-          setLongitude(longitude);
-          onCoordinatesChange({
-            latitude,
-            longitude,
-          });
-          cleanUpAutocomplete(autocomplete);
-          setIsAutocompleteInitialized(false);
-        }
-      }
-    };
+  const [zipCode, setZipCode] = useState(defaultValue);
+  const [coordinates, setCoordinates] = useState<
+    { latitude: number; longitude: number } | undefined
+  >();
+
+  const [autocomplete, setAutocomplete] =
+    useState<google.maps.places.Autocomplete | null>();
+
+  const onSelectPlaceHandler = (latitude: number, longitude: number, zipCode: string) => {
+    console.log({ latitude, longitude, zipCode });
+    setCoordinates({ latitude, longitude });
+    setZipCode(zipCode);
   };
 
+  const loadAutocomplete = useCallback(async () => {
+    if (zipCodeInputRef.current && !autocomplete) {
+      const autocomplete = await initializeAutocomplete({
+        input: zipCodeInputRef.current,
+        apiKey: autocompleteApiKey,
+        onSelected: (latitude, longitude, zipCode) =>
+          onSelectPlaceHandler(latitude, longitude, zipCode),
+      });
+
+      setAutocomplete(autocomplete);
+    }
+  }, [autocomplete, autocompleteApiKey]);
+
   useEffect(() => {
-    const loadAutocomplete = async () => {
-      if (zipCodeInputRef.current) {
-        if (!isAutocompleteInitialized) {
-          await initializeAutocomplete({
-            input: zipCodeInputRef.current,
-            onPlaceChangeHandler,
-            apiKey: placesApiKey,
-          });
-          setIsAutocompleteInitialized(true);
-        }
+    loadAutocomplete();
+
+    return () => {
+      if (autocomplete) {
+        cleanUpAutocomplete(autocomplete);
       }
     };
-
-    loadAutocomplete();
   });
 
   return (
@@ -83,18 +69,8 @@ export default function AutocompletePlacesInput({
         onChange={e => setZipCode(e.target.value)}
         value={zipCode}
       />
-      <input
-        type="hidden"
-        name="latitude"
-        value={latitude}
-        onChange={e => setLatitude(parseFloat(e.target.value))}
-      />
-      <input
-        type="hidden"
-        name="longitude"
-        value={longitude}
-        onChange={e => setLongitude(parseFloat(e.target.value))}
-      />
+      <input type="hidden" name="latitude" value={coordinates?.latitude} />
+      <input type="hidden" name="longitude" value={coordinates?.longitude} />
     </div>
   );
 }

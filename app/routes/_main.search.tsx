@@ -29,6 +29,7 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
   const fieldValues = await validator.validate(await request.formData());
 
   if (fieldValues.error) {
+    console.error(fieldValues.error);
     return validationError(fieldValues.error);
   }
 
@@ -50,21 +51,17 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
   const jobId = url.searchParams.get('id');
 
   const searchJob = jobId ? await getKVRecord<SearchJobSerialized>(context, jobId) : null;
-  const placesApiKey = context.cloudflare.env.PLACES_API_KEY;
+  const autocompleteApiKey = context.cloudflare.env.AUTOCOMPLETE_API_KEY;
 
-  return { jobId, searchJob, placesApiKey };
+  return { jobId, searchJob, autocompleteApiKey };
 };
 
 export default function SearchPage() {
   const revalidator = useRevalidator();
-  const { jobId, searchJob, placesApiKey } = useLoaderData<typeof loader>();
+  const { jobId, searchJob, autocompleteApiKey } = useLoaderData<typeof loader>();
 
   const [jobState, setJobState] = useState<
     { time: string; percentage: string; message: string } | undefined
-  >();
-
-  const [coordinates, setCoordinates] = useState<
-    { latitude:  number; longitude: number } | undefined
   >();
 
   const startSearchJob = useCallback(async () => {
@@ -95,16 +92,16 @@ export default function SearchPage() {
     startSearchJob();
   }, [startSearchJob]);
 
-  const onCoordinatesChange =
-    (coordinates: { latitude: number; longitude: number }) => {
-      setCoordinates(coordinates);
-    };
-
   console.log('search', searchJob, 'jobState', jobState);
 
   return (
     <div className="flex flex-col gap-6">
-      <ValidatedForm id="searchForm" validator={validator} method="post" className="flex flex-col gap-6">
+      <ValidatedForm
+        id="searchForm"
+        validator={validator}
+        method="post"
+        className="flex flex-col gap-6"
+      >
         <div className="rounded-lg border bg-base-200/30 p-4 md:p-6">
           <div className="flex gap-4">
             <Input
@@ -124,16 +121,11 @@ export default function SearchPage() {
               icon={<MapPinIcon className="form-input-icon" />}
               defaultValue={searchJob?.input.zipCode}
               disabled={!!searchJob}
-              placesApiKey={placesApiKey}
-              onCoordinatesChange={onCoordinatesChange}
+              autocompleteApiKey={autocompleteApiKey}
             />
           </div>
         </div>
-        <SubmitButton
-          className="w-full"
-          message="Submit"
-          disabled={!!searchJob || (!coordinates)}
-        />
+        <SubmitButton className="w-full" message="Submit" disabled={!!searchJob} />
       </ValidatedForm>
       {jobState && (
         <div className="mx-auto my-12 flex flex-col items-center justify-center gap-4">
@@ -169,9 +161,7 @@ export default function SearchPage() {
       )}
       {[SearchJobState.Success, SearchJobState.Failure].includes(
         searchJob?.state as SearchJobState
-      ) && (
-        <Logs logs={searchJob?.logs ?? []} />
-      )}
+      ) && <Logs logs={searchJob?.logs ?? []} />}
     </div>
   );
 }
