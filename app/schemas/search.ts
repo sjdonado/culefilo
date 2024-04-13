@@ -5,7 +5,10 @@ export const SearchSchema = z.object({
     .string()
     .min(1, { message: 'Required field' })
     .max(30, { message: 'Too long' }),
-  zipCode: z.string().regex(/^[0-9]{5,6}$/, 'Invalid zip code format'),
+  zipCode: z
+    .string()
+    .transform(value => value.match(/\d+/)?.[0] || '')
+    .pipe(z.string().min(3).max(6)),
   latitude: z
     .string()
     .transform(value => parseFloat(value))

@@ -51,7 +51,7 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
   const jobId = url.searchParams.get('id');
 
   const searchJob = jobId ? await getKVRecord<SearchJobSerialized>(context, jobId) : null;
-  const autocompleteApiKey = context.cloudflare.env.AUTOCOMPLETE_API_KEY;
+  const autocompleteApiKey = context.cloudflare.env.PLACES_API_KEY;
 
   return { jobId, searchJob, autocompleteApiKey };
 };

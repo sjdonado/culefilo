@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 
-import { initializeAutocomplete, cleanUpAutocomplete } from '~/utils/autocomplete.client';
+import { Loader as GoogleMapsApiLoader } from '@googlemaps/js-api-loader';
+
 import { type InputProps, default as Input } from './Input';
 
 interface AutocompletePlacesInput extends InputProps {
@@ -18,41 +19,63 @@ export default function AutocompletePlacesInput({
 }: AutocompletePlacesInput) {
   const zipCodeInputRef = useRef(null);
 
+  const [isAutocompleteInitialized, setIsAutocompleteInitialized] = useState(false);
+
   const [zipCode, setZipCode] = useState(defaultValue);
   const [coordinates, setCoordinates] = useState<
     { latitude: number; longitude: number } | undefined
   >();
 
-  const [autocomplete, setAutocomplete] =
-    useState<google.maps.places.Autocomplete | null>();
-
-  const onSelectPlaceHandler = (latitude: number, longitude: number, zipCode: string) => {
-    console.log({ latitude, longitude, zipCode });
-    setCoordinates({ latitude, longitude });
-    setZipCode(zipCode);
-  };
-
-  const loadAutocomplete = useCallback(async () => {
-    if (zipCodeInputRef.current && !autocomplete) {
-      const autocomplete = await initializeAutocomplete({
-        input: zipCodeInputRef.current,
-        apiKey: autocompleteApiKey,
-        onSelected: (latitude, longitude, zipCode) =>
-          onSelectPlaceHandler(latitude, longitude, zipCode),
-      });
-
-      setAutocomplete(autocomplete);
+  const initializeAutocomplete = useCallback(async () => {
+    if (!zipCodeInputRef.current || isAutocompleteInitialized) {
+      return;
     }
-  }, [autocomplete, autocompleteApiKey]);
+
+    const googleMapsApiLoader = new GoogleMapsApiLoader({
+      apiKey: autocompleteApiKey,
+      version: 'weekly',
+    });
+
+    const { Autocomplete } = await googleMapsApiLoader.importLibrary('places');
+
+    const options = {
+      fields: ['formatted_address', 'geometry', 'name', 'address_components'],
+      strictBounds: false,
+    };
+
+    const autocomplete = new Autocomplete(zipCodeInputRef.current, options);
+
+    autocomplete.addListener('place_changed', () => {
+      const place = autocomplete.getPlace();
+
+      console.log('place', place);
+
+      // const zipCode = place?.address_components?.find(component =>
+      //   component.types.includes('postal_code')
+      // )?.long_name;
+      //
+      // const parsedZipCode = zipCode?.match(/^\d+$/)?.[0];
+
+      // if (parsedZipCode) {
+      const latitude = place?.geometry?.location?.lat();
+      const longitude = place?.geometry?.location?.lng();
+
+      console.log({ latitude, longitude });
+
+      if (latitude && longitude) {
+        setCoordinates({ latitude, longitude });
+        // setZipCode(parsedZipCode);
+
+        google.maps?.event.clearInstanceListeners(autocomplete);
+      }
+      // }
+    });
+
+    setIsAutocompleteInitialized(true);
+  }, [zipCodeInputRef, isAutocompleteInitialized, autocompleteApiKey]);
 
   useEffect(() => {
-    loadAutocomplete();
-
-    return () => {
-      if (autocomplete) {
-        cleanUpAutocomplete(autocomplete);
-      }
-    };
+    initializeAutocomplete();
   });
 
   return (
@@ -61,7 +84,7 @@ export default function AutocompletePlacesInput({
         forwardedRef={zipCodeInputRef}
         name={name}
         label={label}
-        type="number"
+        type="text"
         placeholder={placeholder}
         icon={icon}
         defaultValue={defaultValue}
