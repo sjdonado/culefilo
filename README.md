@@ -4,7 +4,9 @@
 
 **Demo:** https://cule-filo.pages.dev
 
-Team: [@sjdonado](http://github.com/sjdonado) [@gjhernandez](http://github.com/gjhernandez) [@krthr](http://github.com/krthr)
+https://github.com/sjdonado/culefilo/assets/27580836/9c6992b4-81b7-4940-85e3-fe21dbbd41c2
+
+**Team:** [@sjdonado](http://github.com/sjdonado) [@gjhernandez](http://github.com/gjhernandez) [@krthr](http://github.com/krthr)
 
 ## Features
 
