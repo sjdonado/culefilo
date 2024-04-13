@@ -1,114 +1,88 @@
-import { useRef, useState, useEffect } from 'react';
-import { useControlField } from 'remix-validated-form';
+import { useRef, useState, useEffect, useCallback } from 'react';
 
-import {
-  initializeAutocomplete,
-  cleanUpAutocomplete,
-} from '~/utils/autocomplete.client';
+import { Loader as GoogleMapsApiLoader } from '@googlemaps/js-api-loader';
+
 import { type InputProps, default as Input } from './Input';
+import type { Search } from '~/schemas/search';
+import { useField } from 'remix-validated-form';
 
 interface AutocompletePlacesInput extends InputProps {
-  placesApiKey: string;
-  onCoordinatesChange:  (coordinates: {
-    latitude: number;
-    longitude: number;
-  }) => void;
+  autocompleteApiKey: string;
 }
 
-export default function AutocompletePlacesInput ({
+export default function AutocompletePlacesInput({
   name,
   label,
   placeholder,
-  placesApiKey,
+  autocompleteApiKey,
   defaultValue,
   icon,
   disabled,
-  onCoordinatesChange,
-  ...rest
 }: AutocompletePlacesInput) {
-  const [zipCode, setZipCode] = useState(defaultValue);
-  const [
-    isAutocompleteInitialized,
-    setIsAutocompleteInitialized,
-  ] = useState<boolean>(false);
+  const AddressInputRef = useRef(null);
 
-  const [latitude, setLatitude] =
-    useControlField<number | undefined>('latitude', 'searchForm');
-  const [longitude, setLongitude] =
-    useControlField<number | undefined>('longitude', 'searchForm');
+  const [isAutocompleteInitialized, setIsAutocompleteInitialized] = useState(false);
 
-  const zipCodeInputRef = useRef(null);
+  const [coordinates, setCoordinates] = useState<Search['coordinates']>();
+  const { error, getInputProps } = useField('coordinates');
 
-  const onPlaceChangeHandler = (
-    autocomplete: google.maps.places.Autocomplete,
-  ) => {
-    return () => {
-      const place = autocomplete.getPlace();
-      const parsedZipCode = place
-        ?.address_components
-        ?.find((component) => component.types.includes('postal_code'))
-        ?.long_name;
-      const onlyNumbersRegExp = /^\d+$/;
-      if (parsedZipCode && onlyNumbersRegExp.test(parsedZipCode)) {
-        const latitude = place?.geometry?.location?.lat();
-        const longitude = place?.geometry?.location?.lng();
-        if (latitude && longitude) {
-          setLatitude(latitude);
-          setLongitude(longitude);
-          onCoordinatesChange({
-            latitude,
-            longitude,
-          });
-          cleanUpAutocomplete(autocomplete);
-          setIsAutocompleteInitialized(false);
-        }
-      }
-    };
-  }
-
-  useEffect(() => {
-    const loadAutocomplete = async() => {
-      if (zipCodeInputRef.current) {
-        if (!isAutocompleteInitialized) {
-          await initializeAutocomplete({
-            input: zipCodeInputRef.current,
-            onPlaceChangeHandler,
-            apiKey: placesApiKey,
-          });
-          setIsAutocompleteInitialized(true);
-        }
-      }
+  const initializeAutocomplete = useCallback(async () => {
+    if (!AddressInputRef.current || isAutocompleteInitialized) {
+      return;
     }
 
-    loadAutocomplete();
+    const googleMapsApiLoader = new GoogleMapsApiLoader({
+      apiKey: autocompleteApiKey,
+      version: 'weekly',
+    });
+
+    const { Autocomplete } = await googleMapsApiLoader.importLibrary('places');
+
+    const options = {
+      fields: ['formatted_address', 'geometry', 'name', 'address_components'],
+      strictBounds: false,
+    };
+
+    const autocomplete = new Autocomplete(AddressInputRef.current, options);
+
+    autocomplete.addListener('place_changed', () => {
+      const place = autocomplete.getPlace();
+
+      const latitude = place?.geometry?.location?.lat();
+      const longitude = place?.geometry?.location?.lng();
+
+      if (latitude && longitude) {
+        setCoordinates({ latitude, longitude });
+        google.maps?.event.clearInstanceListeners(autocomplete);
+      }
+    });
+
+    setIsAutocompleteInitialized(true);
+  }, [AddressInputRef, isAutocompleteInitialized, autocompleteApiKey]);
+
+  useEffect(() => {
+    initializeAutocomplete();
   });
 
   return (
-    <div>
+    <div className="flex flex-col">
       <Input
-          name={name}
-          label={label}
-          type="number"
-          placeholder="080001"
-          icon={icon}
-          defaultValue={defaultValue}
-          disabled={disabled}
-          onChange={(e) => setZipCode(e.target.value)}
-          value={zipCode}
-          forwardedRef={zipCodeInputRef}
-        />
-        <input
-          type="hidden"
-          name="latitude"
-          value={latitude}
-          onChange={(e) => setLatitude(parseFloat(e.target.value))}
-        />
-        <input
-          type="hidden"
-          name="longitude"
-          value={longitude}
-          onChange={(e) => setLongitude(parseFloat(e.target.value))}
-        />
+        className="!mb-0"
+        forwardedRef={AddressInputRef}
+        name={name}
+        label={label}
+        type="text"
+        placeholder={placeholder}
+        icon={icon}
+        defaultValue={defaultValue}
+        disabled={disabled}
+      />
+      <input
+        type="hidden"
+        name="coordinates"
+        {...getInputProps({ value: JSON.stringify(coordinates) })}
+      />
+      {error && <span className="mt-1 text-xs text-red-500">{error}</span>}
     </div>
   );
 }

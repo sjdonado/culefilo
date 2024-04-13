@@ -5,15 +5,20 @@ export const SearchSchema = z.object({
     .string()
     .min(1, { message: 'Required field' })
     .max(30, { message: 'Too long' }),
-  zipCode: z.string().regex(/^[0-9]{5,6}$/, 'Invalid zip code format'),
-  latitude: z.string()
-    .transform((value) => parseFloat(value))
-    .pipe(z.number().min(-90).max(90))
-    .transform((value) => String(value)),
-  longitude: z.string()
-    .transform((value) => parseFloat(value))
-    .pipe(z.number().min(-180).max(180))
-    .transform((value) => String(value)),
+  address: z.string().min(1, { message: 'Required field' }),
+  coordinates: z.preprocess(
+    val => JSON.parse(val && typeof val === 'string' ? val : 'null'),
+    z.object(
+      {
+        latitude: z.number().min(-90).max(90),
+        longitude: z.number().min(-180).max(180),
+      },
+      {
+        required_error: 'Required field',
+        invalid_type_error: 'Invalid address, select another location',
+      }
+    )
+  ),
 });
 
 export type Search = z.infer<typeof SearchSchema>;

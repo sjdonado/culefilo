@@ -29,18 +29,15 @@ export const action = async ({ request, context }: ActionFunctionArgs) => {
   const fieldValues = await validator.validate(await request.formData());
 
   if (fieldValues.error) {
+    console.error(fieldValues.error);
     return validationError(fieldValues.error);
   }
 
-  const { favoriteMealName, zipCode, latitude, longitude } = fieldValues.data;
+  const { favoriteMealName, address, coordinates } = fieldValues.data;
 
-  const coordinates = {
-    latitude: parseFloat(latitude),
-    longitude: parseFloat(longitude),
-  };
-  const location = { zipCode, coordinates };
-
-  const key = await createSearchJob(context, favoriteMealName, location);
+  const key = await createSearchJob(context, favoriteMealName, address, {
+    coordinates,
+  });
 
   return redirect(`/search?id=${key}`);
 };
@@ -50,21 +47,17 @@ export const loader = async ({ request, context }: LoaderFunctionArgs) => {
   const jobId = url.searchParams.get('id');
 
   const searchJob = jobId ? await getKVRecord<SearchJobSerialized>(context, jobId) : null;
-  const placesApiKey = context.cloudflare.env.PLACES_API_KEY;
+  const autocompleteApiKey = context.cloudflare.env.AUTOCOMPLETE_API_KEY;
 
-  return { jobId, searchJob, placesApiKey };
+  return { jobId, searchJob, autocompleteApiKey };
 };
 
 export default function SearchPage() {
   const revalidator = useRevalidator();
-  const { jobId, searchJob, placesApiKey } = useLoaderData<typeof loader>();
+  const { jobId, searchJob, autocompleteApiKey } = useLoaderData<typeof loader>();
 
   const [jobState, setJobState] = useState<
     { time: string; percentage: string; message: string } | undefined
-  >();
-
-  const [coordinates, setCoordinates] = useState<
-    { latitude:  number; longitude: number } | undefined
   >();
 
   const startSearchJob = useCallback(async () => {
@@ -95,45 +88,32 @@ export default function SearchPage() {
     startSearchJob();
   }, [startSearchJob]);
 
-  const onCoordinatesChange =
-    (coordinates: { latitude: number; longitude: number }) => {
-      setCoordinates(coordinates);
-    };
-
-  console.log('search', searchJob, 'jobState', jobState);
-
   return (
     <div className="flex flex-col gap-6">
-      <ValidatedForm id="searchForm" validator={validator} method="post" className="flex flex-col gap-6">
+      <ValidatedForm validator={validator} method="post" className="flex flex-col gap-6">
         <div className="rounded-lg border bg-base-200/30 p-4 md:p-6">
-          <div className="flex gap-4">
+          <div className="flex flex-wrap gap-4 [&>div]:min-w-52 [&>div]:flex-1">
             <Input
-              className="flex-1"
               name="favoriteMealName"
-              label="Your favorite meal"
+              label="Meal/Dish/Food"
               type="text"
-              placeholder="Burger with fries"
+              placeholder="Currywurst"
               icon={<MagnifyingGlassIcon className="form-input-icon" />}
               defaultValue={searchJob?.input.favoriteMealName}
               disabled={!!searchJob}
             />
             <AutocompletePlacesInput
-              name="zipCode"
-              label="Zip code"
-              placeholder="080001"
+              name="address"
+              label="Where to eat"
+              placeholder="Berlin, Germany"
               icon={<MapPinIcon className="form-input-icon" />}
-              defaultValue={searchJob?.input.zipCode}
+              defaultValue={searchJob?.input.address}
               disabled={!!searchJob}
-              placesApiKey={placesApiKey}
-              onCoordinatesChange={onCoordinatesChange}
+              autocompleteApiKey={autocompleteApiKey}
             />
           </div>
         </div>
-        <SubmitButton
-          className="w-full"
-          message="Submit"
-          disabled={!!searchJob || (!coordinates)}
-        />
+        <SubmitButton className="w-full" message="Submit" disabled={!!searchJob} />
       </ValidatedForm>
       {jobState && (
         <div className="mx-auto my-12 flex flex-col items-center justify-center gap-4">
@@ -169,9 +149,7 @@ export default function SearchPage() {
       )}
       {[SearchJobState.Success, SearchJobState.Failure].includes(
         searchJob?.state as SearchJobState
-      ) && (
-        <Logs logs={searchJob?.logs ?? []} />
-      )}
+      ) && <Logs logs={searchJob?.logs ?? []} />}
     </div>
   );
 }

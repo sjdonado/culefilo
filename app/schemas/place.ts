@@ -11,7 +11,6 @@ export const PlaceSchema = z.object({
   thumbnail: z.string().nullable(),
   rating: z.string(),
   price: z.string().nullable(),
-  isOpen: z.boolean().nullable(),
 });
 
 export const PlaceParsedSchema = PlaceSchema.pick({
@@ -28,21 +27,15 @@ export const PlaceParsedSchema = PlaceSchema.pick({
       count: z.number().optional(),
     }),
     priceLevel: z.string().optional(),
-    isOpen: z.boolean().optional(),
   })
   .transform(({ rating, priceLevel, ...data }) => ({
     ...data,
     rating:
       !!rating.number && !!rating.count ? `${rating.number} (${rating.count})` : null,
     price: parsePlacePriceLevel(priceLevel ?? ''),
-    isOpen: data.isOpen ?? null,
   }));
 
-export const PlaceGeoDataSchema = z.object({
-  zipCode: z.string(),
-  country: z.string().optional(),
-  city: z.string().optional(),
-  state: z.string().optional(),
+export const PlaceLocationSchema = z.object({
   coordinates: z.object({
     latitude: z.number(),
     longitude: z.number(),
@@ -65,4 +58,4 @@ export const parsePlacePriceLevel = (priceLevel: string) => {
 };
 
 export type Place = z.infer<typeof PlaceSchema>;
-export type PlaceGeoData = z.infer<typeof PlaceGeoDataSchema>;
+export type PlaceLocation = z.infer<typeof PlaceLocationSchema>;

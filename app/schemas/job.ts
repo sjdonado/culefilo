@@ -3,14 +3,14 @@ import { z } from 'zod';
 import { ALL_SEARCH_JOB_STATES } from '~/constants/job';
 
 import { SearchSchema } from './search';
-import { PlaceGeoDataSchema, PlaceParsedSchema, PlaceSchema } from './place';
+import { PlaceLocationSchema, PlaceParsedSchema, PlaceSchema } from './place';
 
 export const SearchJobSchema = z.object({
-  input: SearchSchema.extend({
-    latitude: z.number(),
-    longitude: z.number(),
+  input: SearchSchema.pick({
+    favoriteMealName: true,
+    address: true,
   }),
-  geoData: PlaceGeoDataSchema,
+  location: PlaceLocationSchema,
   state: z.enum(ALL_SEARCH_JOB_STATES),
   places: z.array(PlaceSchema).optional(),
   logs: z.array(z.string()).optional(),

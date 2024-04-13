@@ -7,7 +7,10 @@ export default function Header() {
         <h1 className="text-3xl font-bold">Cule filo</h1>
       </Link>
       <p className="text-justify text-gray-500">
-        Search for your favorite meal near you, quickly, enhanced by AI and for free.
+        Craving your favorite meal? Our AI-powered search makes it easy to find the top 3
+        restaurants serving it near you. Just enter the dish you're looking for and your
+        location, and let our intelligent algorithm do the rest. Whether it's a local
+        specialty or a global delicacy, our free app will guide you to the perfect spot.
       </p>
     </div>
   );

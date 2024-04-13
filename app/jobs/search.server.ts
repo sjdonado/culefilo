@@ -3,7 +3,7 @@ import { DONE_JOB_MESSAGE, SearchJobState } from '~/constants/job';
 
 import type { SearchJob } from '~/schemas/job';
 import { SearchJobParsedSchema } from '~/schemas/job';
-import type { PlaceGeoData } from '~/schemas/place';
+import type { PlaceLocation } from '~/schemas/place';
 
 import {
   getKVRecord,
@@ -22,19 +22,18 @@ import {
 export async function createSearchJob(
   context: AppLoadContext,
   favoriteMealName: string,
-  geoData: PlaceGeoData
+  address: string,
+  location: PlaceLocation
 ) {
   const key = crypto.randomUUID();
 
   const initState = SearchJobParsedSchema.parse({
     input: {
       favoriteMealName,
-      zipCode: geoData.zipCode,
-      latitude: geoData.coordinates.latitude,
-      longitude:geoData.coordinates.longitude,
+      address,
     },
+    location,
     state: SearchJobState.Created,
-    geoData,
     createdAt: Date.now(),
   });
 
@@ -90,7 +89,7 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
         const allPlaces = new Map<string, PlaceAPIResponse['places'][0]>();
 
         const originalQuery = job.input.favoriteMealName;
-        const coordinates = job.geoData.coordinates;
+        const coordinates = job.location.coordinates;
 
         async function searchAndAppendToAllPlaces(query: string, baseProgress = 0.01) {
           console.log(
@@ -265,7 +264,6 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
           const name = place.displayName.text;
           const address = place.formattedAddress;
           const url = place.googleMapsUri;
-          const isOpen = place.currentOpeningHours?.openNow;
 
           const description =
             placesDescriptions.find(p => p?.id === id)?.description ?? null;
@@ -281,7 +279,6 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
             thumbnail,
             rating: { number: place.rating, count: place.userRatingCount },
             price: place.priceLevel,
-            isOpen,
           };
         });
 
