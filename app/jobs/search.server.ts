@@ -217,7 +217,7 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
               );
 
               await Promise.all(
-                (place.photos ?? []).slice(0, 5).map(async (photo, photoIdx) => {
+                (place.photos ?? []).slice(0, 4).map(async (photo, photoIdx) => {
                   const binary = await downloadPlacePhoto(context, photo.name);
                   const caption = await runImageToTextRequest(context, binary);
 
