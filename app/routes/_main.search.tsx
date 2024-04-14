@@ -14,7 +14,7 @@ import {
   useSearchParams,
 } from '@remix-run/react';
 
-import { DONE_JOB_MESSAGE, SearchJobState } from '~/constants/job';
+import { DONE_JOB_MESSAGE, SearchJobStage, SearchJobState } from '~/constants/job';
 
 import { SearchSchema } from '~/schemas/search';
 import type { SearchJobSerialized } from '~/schemas/job';
@@ -71,7 +71,8 @@ export default function SearchPage() {
 
   const startSearchJob = useCallback(async () => {
     if (
-      searchJob?.state === SearchJobState.Created ||
+      (searchJob?.state === SearchJobState.Created &&
+        searchJob?.stage === SearchJobStage.Initial) ||
       (retry && searchJob?.state === SearchJobState.Failure)
     ) {
       const eventSource = new EventSource(`/search/job/${jobId}`);

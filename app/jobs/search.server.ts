@@ -54,10 +54,10 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
   const encodeMessage = (message: string, percentage: number, time = Date.now()) =>
     encoder.encode(`data: ${time},${(percentage * 100).toFixed(1)},${message}\n\n`);
 
-  // if job has finished (if has failed to retry is allowed)
-  if (job.state === SearchJobState.Success) {
+  // check if job is not running or completed
+  if ([SearchJobState.Running, SearchJobState.Success].includes(job.state)) {
     console.log(
-      `[${startOrCheckSearchJob.name}] (${key}) finished with status ${job.state} (${job.stage})`
+      `[${startOrCheckSearchJob.name}] (${key}) already running or completed: ${job.state}`
     );
 
     return encodeMessage(DONE_JOB_MESSAGE, 1);
@@ -213,7 +213,7 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
 
               sendEvent(
                 `Fetching photos for "${place.displayName.text}"...`,
-                increaseProgress(progress < 0.6 ? 0.6 - progress : 0)
+                increaseProgress(0.05)
               );
 
               await Promise.all(
@@ -266,10 +266,13 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
             })
           );
 
-          const [placesDescriptions, placesThumbnails] = await Promise.all([
-            placesDescriptionsPromise,
-            placesThumbnailsPromise,
-          ]);
+          // Not supported by workers in the free plan https://developers.cloudflare.com/workers/platform/limits/#simultaneous-open-connections
+          // const [placesDescriptions, placesThumbnails] = await Promise.all([
+          //   placesDescriptionsPromise,
+          //   placesThumbnailsPromise,
+          // ]);
+          const placesDescriptions = await placesDescriptionsPromise;
+          const placesThumbnails = await placesThumbnailsPromise;
 
           sendEvent(
             `Almost done! Parsing results...`,

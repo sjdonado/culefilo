@@ -53,7 +53,7 @@ export async function runLLMRequest(
     stream: false,
   });
 
-  console.log(`[${runLLMRequest.name}] ${JSON.stringify({ prompt, data }, null, 2)}`);
+  // console.log(`[${runLLMRequest.name}] ${JSON.stringify({ prompt, data }, null, 2)}`);
 
   return (data as { response: string }).response;
 }
@@ -74,13 +74,13 @@ export async function runSummarizationRequest(
     max_length: 3072, // the default is 1024
   });
 
-  console.log(
-    `[${runSummarizationRequest.name}] ${JSON.stringify(
-      { input, output: data.summary },
-      null,
-      2
-    )}`
-  );
+  // console.log(
+  //   `[${runSummarizationRequest.name}] ${JSON.stringify(
+  //     { input, output: data.summary },
+  //     null,
+  //     2
+  //   )}`
+  // );
 
   return data.summary;
 }
