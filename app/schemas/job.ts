@@ -28,6 +28,7 @@ export const SearchJobParsedSchema = SearchJobSchema.extend({
 export const SearchJobSerializedSchema = SearchJobSchema.pick({
   input: true,
   state: true,
+  stage: true,
   logs: true,
   createdAt: true,
 })

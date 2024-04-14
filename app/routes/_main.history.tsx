@@ -13,14 +13,7 @@ export const loader = async ({ context }: LoaderFunctionArgs) => {
 
   const searches = await Promise.all(
     records.map(async record => {
-      // TEMPFIX: safeParse ignores previous results with different schema (it can be removed if KV is purged)
-      const result = await SearchJobSerializedSchema.safeParseAsync({
-        id: record.id,
-        input: record.input,
-        state: record.state,
-        places: record.places,
-        createdAt: record.createdAt,
-      });
+      const result = await SearchJobSerializedSchema.safeParseAsync(record);
 
       if (result.success) {
         return result.data;
@@ -29,7 +22,7 @@ export const loader = async ({ context }: LoaderFunctionArgs) => {
   );
 
   const sortedSearches = searches
-    .filter(Boolean) // TEMPFIX: didn't find a way to purge the KV local cache
+    .filter(Boolean)
     .sort((a, b) => new Date(b!.createdAt).getTime() - new Date(a!.createdAt).getTime());
 
   return {
