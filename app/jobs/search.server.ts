@@ -78,9 +78,15 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
 
       const increaseProgress = (increment: number) => (progress += increment);
 
-      const updateSearchJobState = async (newSearchJob: SearchJobParsed) => {
+      const updateSearchJobState = async (
+        newSearchJob: SearchJobParsed,
+        remote = false
+      ) => {
         inMemoryJob = newSearchJob;
-        await putKVRecord(context, key, newSearchJob);
+
+        if (remote) {
+          await putKVRecord(context, key, newSearchJob);
+        }
       };
 
       try {
@@ -327,7 +333,11 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
               state: SearchJobState.Success,
               places,
               logs,
-            })
+              placesFetched: {},
+              descriptions: [],
+              thumbnails: [],
+            }),
+            true
           );
         }
 
@@ -336,11 +346,14 @@ export async function startOrCheckSearchJob(context: AppLoadContext, key: string
       } catch (error) {
         console.error(`[${startOrCheckSearchJob.name}] Job ${key} failed`, error);
 
-        await putKVRecord(context, key, {
-          ...inMemoryJob,
-          state: SearchJobState.Failure,
-          logs,
-        });
+        await updateSearchJobState(
+          {
+            ...inMemoryJob,
+            state: SearchJobState.Failure,
+            logs,
+          },
+          true
+        );
 
         throw error;
       }
